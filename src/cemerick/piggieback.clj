@@ -5,6 +5,7 @@
             (clojure.tools.nrepl [transport :as transport]
                                  [server :as server]
                                  [misc :refer (returning)])
+            [clojure.tools.nrepl.middleware.load-file :as load-file]
             [cljs.repl :as cljsrepl]
             [cljs.analyzer :as ana]
             [cljs.tagged-literals :as tags]
@@ -96,6 +97,21 @@
               (when (string? ret)
                 (println ret)))))))))
 
+(defn- wrap-exprs
+  [& exprs]
+  (for [expr exprs]
+    `(#'*eval* @#'*cljs-repl-env*
+               '~expr
+               @#'*cljs-repl-options*)))
+
+(defn- load-file-contents
+  [repl-env code file-path file-name]
+  (cljs.repl/load-stream repl-env file-name (java.io.StringReader. code)))
+
+(defn- load-file-code
+  [code file-path file-name]
+  (wrap-exprs (list `load-file-contents code file-path file-name)))
+
 (defn cljs-repl
   "Starts a ClojureScript REPL over top an nREPL session.  Accepts
    all options usually accepted by e.g. cljs.repl/repl. Also accepts optional
@@ -111,6 +127,8 @@
         eval (or eval #(with-rhino-context (apply cljs-eval %&)))]
     ; :warn-on-undeclared default from ClojureScript's script/repljs
     (set! *cljs-repl-options* (-> (merge {:warn-on-undeclared true} options)
+                                (update-in [:special-fns] assoc
+                                           `load-file-contents #'load-file-contents)
                                 (dissoc :repl-env :eval)))
     (set! *cljs-repl-env* repl-env)
     (set! *eval* eval)
@@ -136,12 +154,8 @@
                                ::error))))
                    repeatedly
                    (take-while (complement #{end}))
-                   (remove #{::error}))))
-        code (for [expr code]
-               `(#'*eval* @#'*cljs-repl-env*
-                          '~expr
-                          @#'*cljs-repl-options*))]
-    (assoc msg :code code)))
+                   (remove #{::error}))))]
+    (assoc msg :code (apply wrap-exprs code))))
 
 (defn- cljs-ns-transport
   [transport]
@@ -157,16 +171,17 @@
 (defn wrap-cljs-repl
   [h]
   (fn [{:keys [op session transport] :as msg}]
-    ; ensure that bindings exist so cljs-repl can set! 'em
-    (when-not (contains? @session #'*cljs-repl-env*)
-      (swap! session (partial merge {#'*cljs-repl-env* *cljs-repl-env*
-                                     #'*eval* *eval*
-                                     #'*cljs-repl-options* *cljs-repl-options*
-                                     #'ana/*cljs-ns* ana/*cljs-ns*})))
-    
-    (let [msg (assoc msg :transport (cljs-ns-transport transport))
-          msg (if (and (= "eval" op) (@session #'*cljs-repl-env*))
-                (prep-code msg)
-                msg)]
-      (h msg))))
-
+    (let [cljs-active? (@session #'*cljs-repl-env*)
+          msg (assoc msg :transport (cljs-ns-transport transport))
+          msg (if (and cljs-active? (= op "eval")) (prep-code msg) msg)]
+      ; ensure that bindings exist so cljs-repl can set! 'em
+      (when-not (contains? @session #'*cljs-repl-env*)
+        (swap! session (partial merge {#'*cljs-repl-env* *cljs-repl-env*
+                                       #'*eval* *eval*
+                                       #'*cljs-repl-options* *cljs-repl-options*
+                                       #'ana/*cljs-ns* ana/*cljs-ns*})))
+      
+      (with-bindings (if cljs-active?
+                       {#'load-file/load-file-code load-file-code}
+                       {})
+        (h msg)))))
