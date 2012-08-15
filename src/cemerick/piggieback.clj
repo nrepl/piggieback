@@ -10,7 +10,7 @@
             [cljs.analyzer :as ana]
             [cljs.tagged-literals :as tags]
             [cljs.repl.rhino :as rhino])
-  (:import org.mozilla.javascript.Context
+  (:import (org.mozilla.javascript Context ScriptableObject)
            clojure.lang.LineNumberingPushbackReader
            java.io.StringReader))
 
@@ -44,6 +44,13 @@
       ; to kill the resulting error to avoid an exception printing on :cljs/quit
       (squelch-rhino-context-error (Context/exit)))))
 
+(defn- map-stdout
+  [rhino-env out]
+  (ScriptableObject/putProperty
+    (:scope rhino-env)
+    "out"
+    (Context/javaToJS out (:scope rhino-env))))
+
 (defn rhino-repl-env
   "Returns a new Rhino ClojureScript REPL environment that has been
    set up via `cljs.repl/-setup`."
@@ -51,6 +58,9 @@
   (with-rhino-context
     (doto (rhino/repl-env)
       cljsrepl/-setup
+      ; rhino/rhino-setup maps System/out to "out" and therefore the target of
+      ; cljs' *print-fn*! :-(
+      (map-stdout *out*)
       ; rhino/repl-env calls (Context/enter) without a (Context/exit)
       (squelch-rhino-context-error
         (Context/exit)))))
