@@ -150,6 +150,21 @@ cljs.user=> (<3 "nREPL still" "ClojureScript")
 
 (The ugly `ThreadDeath` exception will be eliminated eventually.)
 
+
+If you are going to use a browser (most likely) rather than Rhino, something like this would be more appropriate:
+
+```clojure
+(cemerick.piggieback/cljs-repl
+	:repl-env (doto (cljs.repl.browser/repl-env
+	                      :port 9000
+	                      :working-dir  ".lein-cljsbuild-repl")
+				    cljs.repl/-setup)
+		:eval cemerick.piggieback/cljs-eval)
+Type `:cljs/quit` to stop the ClojureScript REPL
+cljs.user=>  "Thanks to xeqi for this tip!"
+"Thanks to xeqi for this tip!"
+```
+
 ## Need Help?
 
 Send a message to the [clojure-tools](http://groups.google.com/group/clojure-tools)
