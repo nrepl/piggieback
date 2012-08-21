@@ -46,24 +46,24 @@ Piggieback is compatible with Clojure 1.4.0+.
 ## Usage
 
 Piggieback is nREPL middleware, so you need to add it to your nREPL server's
-middleware stack.  Keep two things in mind when doing so:
-
-* Piggieback needs to be "above" something that can evaluate code, like
-  `clojure.tools.nrepl.middleware.interruptible-eval/interruptible-eval`.
-* Piggieback depends upon persistent REPL sessions, like those provided by
-  `clojure.tools.nrepl.middleware.session/session`.
-
-You can tweak your own usage of nREPL to ensure that your server contains
-Piggieback.
+middleware stack.
 
 If you're using the latest Leniningen (git `master` at the moment), you can add
-this to your `project.clj` to fully define the handler that `lein repl` will
-use when starting nREPL:
+this to your `project.clj` to automagically mix the Piggieback middleware into
+the stack that `lein repl` will use when starting nREPL:
 
 ```clojure
 :injections [(require 'cemerick.piggieback)]
 :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
 ```
+
+(Alternatively, you can add `wrap-cljs-repl` to your application's hand-tweaked
+nREPL handler.  Keep two things in mind when doing so:
+
+* Piggieback needs to be "above" something that can evaluate code, like
+  `clojure.tools.nrepl.middleware.interruptible-eval/interruptible-eval`.
+* Piggieback depends upon persistent REPL sessions, like those provided by
+  `clojure.tools.nrepl.middleware.session/session`.)
 
 With Piggieback added to your nREPL middleware stack, you can start a
 ClojureScript REPL from any nREPL-capable client (e.g.
