@@ -4,7 +4,8 @@
   (:require [clojure.tools.nrepl :as nrepl]
             (clojure.tools.nrepl [transport :as transport]
                                  [server :as server]
-                                 [misc :refer (returning)])
+                                 [misc :refer (returning)]
+                                 [middleware :refer (set-descriptor!)])
             [clojure.tools.nrepl.middleware.load-file :as load-file]
             [cljs.repl :as cljsrepl]
             [cljs.analyzer :as ana]
@@ -195,3 +196,8 @@
                        {#'load-file/load-file-code load-file-code}
                        {})
         (h msg)))))
+
+(set-descriptor! #'wrap-cljs-repl
+  {:requires #{"clone"}
+   :expects #{"load-file" "eval"}
+   :handles {}})

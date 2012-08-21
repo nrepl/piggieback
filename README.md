@@ -62,16 +62,8 @@ use when starting nREPL:
 
 ```clojure
 :injections [(require 'cemerick.piggieback)]
-:nrepl-handler (-> clojure.tools.nrepl.server/unknown-op
-		  clojure.tools.nrepl.middleware.interruptible-eval/interruptible-eval
-                  cemerick.piggieback/wrap-cljs-repl
-                  clojure.tools.nrepl.middleware.pr-values/pr-values
-                  clojure.tools.nrepl.middleware.session/add-stdin
-                  clojure.tools.nrepl.middleware.session/session)
+:repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
 ```
-
-*(Yes, this is a PITA.  I'm working now on making it _way_ easier to mix
-middlewares into an nREPL stack.)*
 
 With Piggieback added to your nREPL handler, you can start a ClojureScript REPL
 from any nREPL-capable client (e.g. [Leiningen](http://leiningen.org),
