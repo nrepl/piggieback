@@ -5,7 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.4.0"]
-                 [org.clojure/tools.nrepl "0.2.0-SNAPSHOT"]
+                 [org.clojure/tools.nrepl "0.2.0-beta9"]
                  [org.clojure/clojurescript "0.0-1450"]]
   
   :injections [(require 'cemerick.piggieback)]
