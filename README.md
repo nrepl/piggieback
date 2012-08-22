@@ -57,6 +57,21 @@ the stack that `lein repl` will use when starting nREPL:
 :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
 ```
 
+If you're not starting nREPL through Leiningen (e.g. maybe you're starting up
+an nREPL server from within an application), you can achieve the same thing by
+specifying that the `wrap-cljs-repl` middleware be mixed into nREPL's default
+handler:
+
+```clojure
+(require '[clojure.tools.nrepl.server :as server]
+         '[cemerick.piggieback :as pback])
+
+(server/start-server
+  :handler (server/default-handler #'pback/wrap-cljs-repl)
+  ; ...additional `start-server` options as desired
+  )
+```
+
 (Alternatively, you can add `wrap-cljs-repl` to your application's hand-tweaked
 nREPL handler.  Keep two things in mind when doing so:
 
