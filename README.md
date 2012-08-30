@@ -48,7 +48,8 @@ Piggieback is compatible with Clojure 1.4.0+.
 Piggieback is nREPL middleware, so you need to add it to your nREPL server's
 middleware stack.
 
-If you're using the latest Leniningen (git `master` at the moment), you can add
+If you're using recent Leniningen previews (**v2.0-preview9** is the minimum
+required to use this configuration), you can add
 this to your `project.clj` to automagically mix the Piggieback middleware into
 the stack that `lein repl` will use when starting nREPL:
 
