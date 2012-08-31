@@ -93,7 +93,7 @@ ClojureScript REPL from any nREPL-capable client (e.g.
 So, with Leiningen, and using the Rhino ClojureScript environment (the default
 that you get when you e.g. run the `script/repljs` script in the ClojureScript
 source tree, or follow the ['Quick Start' ClojureScript
-tutorial](https://github.com/clojure/clojurescript/wiki/Quick-Start):
+tutorial](https://github.com/clojure/clojurescript/wiki/Quick-Start)):
 
 ```clojure
 la-mer:piggieback chas$ lein2 repl
