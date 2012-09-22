@@ -207,6 +207,8 @@ Now start your ClojureScript REPL through Piggieback; but, this time, use the
 browser-repl environment instead of the Rhino default:
 
 ```clojure
+(require 'cljs.repl.browser)
+
 (cemerick.piggieback/cljs-repl
   :repl-env (doto (cljs.repl.browser/repl-env :port 9000)
               cljs.repl/-setup))
