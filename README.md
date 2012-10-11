@@ -54,7 +54,6 @@ this to your `project.clj` to automagically mix the Piggieback middleware into
 the stack that `lein repl` will use when starting nREPL:
 
 ```clojure
-:injections [(require 'cemerick.piggieback)]
 :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
 ```
 
