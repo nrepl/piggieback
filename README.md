@@ -1,4 +1,4 @@
-# Piggieback
+# Piggieback [![Travis CI status](https://secure.travis-ci.org/cemerick/piggieback.png)](http://travis-ci.org/#!/cemerick/piggieback/builds)
 
 [nREPL](http://github.com/clojure/tools.nrepl) middleware that enables the
 bootstrap of a ClojureScript REPL on top of an nREPL session.

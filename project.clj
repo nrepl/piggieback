@@ -15,6 +15,8 @@
   :deploy-repositories {"releases" {:url "https://oss.sonatype.org/service/local/staging/deploy/maven2/" :creds :gpg}
                         "snapshots" {:url "https://oss.sonatype.org/content/repositories/snapshots/" :creds :gpg}}
   
+  :aliases  {"all" ["with-profile" "dev:dev,1.5"]}
+  
   ;;maven central requirements
   :scm {:url "git@github.com:cemerick/piggieback.git"}
   :pom-addition [:developers [:developer
