@@ -5,16 +5,12 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.4.0"]
-                 [org.clojure/tools.nrepl "0.2.0-beta9"]
-                 [org.clojure/clojurescript "0.0-1450"]]
+                 [org.clojure/tools.nrepl "0.2.1"]
+                 [org.clojure/clojurescript "0.0-1552"]]
   
-  :injections [(require 'cemerick.piggieback)]
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
   
-  :profiles {:dev {:plugins [[lein-clojars "0.9.0"]]}
-             :1.5 {:dependencies [[org.clojure/clojure "1.5.0-SNAPSHOT"]]}}
-  
-  :repositories {"snapshots" "https://oss.sonatype.org/content/repositories/snapshots/"}
+  :profiles {:1.5 {:dependencies [[org.clojure/clojure "1.5.0-beta2"]]}}
   
   :deploy-repositories {"releases" {:url "https://oss.sonatype.org/service/local/staging/deploy/maven2/" :creds :gpg}
                         "snapshots" {:url "https://oss.sonatype.org/content/repositories/snapshots/" :creds :gpg}}
