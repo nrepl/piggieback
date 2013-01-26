@@ -18,6 +18,8 @@
 (deftest default-sanity
   (let [conn (nrepl/connect :port *server-port*)
         session (nrepl/client-session (nrepl/client conn Long/MAX_VALUE))]
+    ; need to let the dynamic bindings get in place before trying to eval anything that
+    ; depends upon those bingings being set
     (doall (nrepl/message session {:op "eval" :code "(cemerick.piggieback/cljs-repl)"}))
-    (doall (nrepl/message session {:op "eval" :code "(defn x [] (into [] (js/Array 1 2 3)))"}))
+    (nrepl/message session {:op "eval" :code "(defn x [] (into [] (js/Array 1 2 3)))"})
     (is (= [1 2 3] (->> {:op "eval" :code "(x)"} (nrepl/message session) nrepl/response-values first)))))
