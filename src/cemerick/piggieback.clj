@@ -135,7 +135,10 @@
              that is called once for each ClojureScript expression to be evaluated."
   [& {:keys [repl-env eval] :as options}]
   (let [repl-env (or repl-env (rhino-repl-env))
-        eval (or eval #(with-rhino-context (apply cljs-eval %&)))]
+        eval (or eval
+               (when (instance? cljs.repl.rhino.RhinoEnv repl-env)
+                 #(with-rhino-context (apply cljs-eval %&)))
+               #(apply cljs-eval %&))]
     ; :warn-on-undeclared default from ClojureScript's script/repljs
     (set! *cljs-repl-options* (-> (merge {:warn-on-undeclared true} options)
                                 (update-in [:special-fns] assoc
