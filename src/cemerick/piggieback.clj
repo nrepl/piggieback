@@ -117,7 +117,8 @@
 
 (defn- load-file-contents
   [repl-env code file-path file-name]
-  (cljs.repl/load-stream repl-env file-name (java.io.StringReader. code)))
+  (binding [ana/*cljs-ns* 'cljs.user]
+    (cljs.repl/load-stream repl-env file-name (java.io.StringReader. code))))
 
 (defn- load-file-code
   [code file-path file-name]
