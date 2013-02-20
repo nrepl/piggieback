@@ -7,6 +7,7 @@
                                  [misc :refer (returning)]
                                  [middleware :refer (set-descriptor!)])
             [clojure.tools.nrepl.middleware.load-file :as load-file]
+            [clojure.tools.nrepl.middleware.interruptible-eval :as ieval]
             [cljs.repl :as cljsrepl]
             [cljs.analyzer :as ana]
             [cljs.tagged-literals :as tags]
@@ -86,7 +87,10 @@
    `eval` functions passed to `cljs-repl`."
   [repl-env expr {:keys [verbose warn-on-undeclared special-fns]}]
   (binding [cljsrepl/*cljs-verbose* verbose
-            ana/*cljs-warn-on-undeclared* warn-on-undeclared]
+            ana/*cljs-warn-on-undeclared* warn-on-undeclared
+            ana/*cljs-ns* (if (:ns ieval/*msg*)
+                            (symbol (:ns ieval/*msg*))
+                            ana/*cljs-ns*)]
     (let [special-fns (merge cljsrepl/default-special-fns special-fns)
           is-special-fn? (set (keys special-fns))]
       (cond
@@ -154,12 +158,14 @@
     (println "` to stop the ClojureScript REPL")))
 
 (defn- prep-code
-  [{:keys [code session] :as msg}]
+  [{:keys [code session ns] :as msg}]
   (let [code (if-not (string? code)
                code
                (let [reader (LineNumberingPushbackReader. (StringReader. code))
-                     end (Object.)]
-                 (->> #(binding [*ns* (create-ns ana/*cljs-ns*)
+                     end (Object.)
+                     ns-sym (or (when ns (symbol ns)) ana/*cljs-ns*)]
+                 (->> #(binding [*ns* (create-ns ns-sym)
+                                 ana/*cljs-ns* ns-sym
                                  *data-readers* tags/*cljs-data-readers*]
                          (try
                            (read reader false end)
