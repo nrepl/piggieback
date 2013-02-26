@@ -28,7 +28,7 @@ Piggieback is available in Maven Central. Add this `:dependency` to your Leining
 `project.clj`:
 
 ```clojure
-[com.cemerick/piggieback "0.0.2"]
+[com.cemerick/piggieback "0.0.3"]
 ```
 
 Or, add this to your Maven project's `pom.xml`:
@@ -37,7 +37,7 @@ Or, add this to your Maven project's `pom.xml`:
 <dependency>
   <groupId>com.cemerick</groupId>
   <artifactId>piggieback</artifactId>
-  <version>0.0.2</version>
+  <version>0.0.3</version>
 </dependency>
 ```
 
@@ -48,7 +48,7 @@ Piggieback is compatible with Clojure 1.4.0+.
 Piggieback is nREPL middleware, so you need to add it to your nREPL server's
 middleware stack.
 
-If you're using recent Leniningen previews (**v2.0-preview9** is the minimum
+If you're using Leniningen v2.0+ (**v2.0-preview9** is the minimum
 required to use this configuration), you can add
 this to your `project.clj` to automagically mix the Piggieback middleware into
 the stack that `lein repl` will use when starting nREPL:
@@ -245,6 +245,6 @@ or would like to contribute patches.
 
 ## License
 
-Copyright © 2012 Chas Emerick and other contributors.
+Copyright © 2012-2013 Chas Emerick and other contributors.
 
 Distributed under the Eclipse Public License, the same as Clojure.
