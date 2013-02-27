@@ -86,31 +86,40 @@
    as the basis of alternative (usually not-Rhino, e.g. node/V8)
    `eval` functions passed to `cljs-repl`."
   [repl-env expr {:keys [verbose warn-on-undeclared special-fns]}]
-  (binding [cljsrepl/*cljs-verbose* verbose
-            ana/*cljs-warn-on-undeclared* warn-on-undeclared
-            ana/*cljs-ns* (if (:ns ieval/*msg*)
-                            (symbol (:ns ieval/*msg*))
-                            ana/*cljs-ns*)]
-    (let [special-fns (merge cljsrepl/default-special-fns special-fns)
-          is-special-fn? (set (keys special-fns))]
-      (cond
-        (= expr :cljs/quit) (do (quit-cljs-repl) :cljs/quit)
-        
-        (and (seq? expr) (is-special-fn? (first expr)))
-        (apply (get special-fns (first expr)) repl-env (rest expr))
-        
-        :default
-        (let [ret (cljsrepl/evaluate-form repl-env
-                    {:context :statement :locals {}
-                     :ns (ana/get-namespace ana/*cljs-ns*)}
-                    "<cljs repl>"
-                    expr
-                    (#'cljsrepl/wrap-fn expr))]
-          (try
-            (read-string ret)
-            (catch Exception _
-              (when (string? ret)
-                (println ret)))))))))
+  (let [explicit-ns (when (:ns ieval/*msg*) (symbol (:ns ieval/*msg*)))
+        ; need to let *cljs-ns* escape from the binding scope below iff it differs
+        ; from any explicitly-specified :ns in the request msg
+        escaping-ns (atom ana/*cljs-ns*)]
+    (returning
+      (with-bindings (merge {#'cljsrepl/*cljs-verbose* verbose
+                             #'ana/*cljs-warn-on-undeclared* warn-on-undeclared}
+                       (when explicit-ns {#'ana/*cljs-ns* explicit-ns}))
+        (let [special-fns (merge cljsrepl/default-special-fns special-fns)
+              set-ns! #(when (not= explicit-ns ana/*cljs-ns*)
+                         (reset! escaping-ns ana/*cljs-ns*))]
+          (cond
+            (= expr :cljs/quit) (do (quit-cljs-repl) :cljs/quit)
+            
+            (and (seq? expr) (find special-fns (first expr)))
+            (returning
+              (apply (get special-fns (first expr)) repl-env (rest expr))
+              (set-ns!))
+            
+            :default
+            (let [ret (cljsrepl/evaluate-form repl-env
+                        {:context :statement :locals {}
+                         :ns (ana/get-namespace ana/*cljs-ns*)}
+                        "<cljs repl>"
+                        expr
+                        (#'cljsrepl/wrap-fn expr))]
+              (set-ns!)
+              (try
+                (read-string ret)
+                (catch Exception _
+                  (when (string? ret)
+                    (println ret))))))))
+      (set! ana/*cljs-ns* @escaping-ns)
+      (set! *ns* (create-ns @escaping-ns)))))
 
 (defn- wrap-exprs
   [& exprs]
