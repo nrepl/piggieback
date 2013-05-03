@@ -19,6 +19,7 @@
 (def ^:private ^:dynamic *cljs-repl-env* nil)
 (def ^:private ^:dynamic *eval* nil)
 (def ^:private ^:dynamic *cljs-repl-options* nil)
+(def ^:private ^:dynamic *original-clj-ns* nil)
 
 (defmacro ^:private squelch-rhino-context-error
   "Catches and silences the exception thrown by (Context/exit)
@@ -73,7 +74,9 @@
     (cljsrepl/-tear-down *cljs-repl-env*))
   (set! *cljs-repl-env* nil)
   (set! *eval* nil)
-  (set! ana/*cljs-ns* 'cljs.user))
+  (set! ana/*cljs-ns* 'cljs.user)
+  (set! *ns* *original-clj-ns*)
+  (set! *original-clj-ns* nil))
 
 (defn cljs-eval
   "Evaluates the expression [expr] (should already be read) using the
@@ -82,7 +85,7 @@
    :special-fns, each with the same acceptable values and semantics as
    the \"regular\" ClojureScript REPL.
 
-   This is generally not going to be used by end users; rather, 
+   This is generally not going to be used by end users; rather,
    as the basis of alternative (usually not-Rhino, e.g. node/V8)
    `eval` functions passed to `cljs-repl`."
   [repl-env expr {:keys [verbose warn-on-undeclared special-fns]}]
@@ -99,12 +102,12 @@
                          (reset! escaping-ns ana/*cljs-ns*))]
           (cond
             (= expr :cljs/quit) (do (quit-cljs-repl) :cljs/quit)
-            
+
             (and (seq? expr) (find special-fns (first expr)))
             (returning
               (apply (get special-fns (first expr)) repl-env (rest expr))
               (set-ns!))
-            
+
             :default
             (let [ret (cljsrepl/evaluate-form repl-env
                         {:context :statement :locals {}
@@ -118,8 +121,9 @@
                 (catch Exception _
                   (when (string? ret)
                     (println ret))))))))
-      (set! ana/*cljs-ns* @escaping-ns)
-      (set! *ns* (create-ns @escaping-ns)))))
+      (when *original-clj-ns*
+        (set! ana/*cljs-ns* @escaping-ns)
+        (set! *ns* (create-ns @escaping-ns))))))
 
 (defn- wrap-exprs
   [& exprs]
@@ -161,7 +165,8 @@
     (set! *cljs-repl-env* repl-env)
     (set! *eval* eval)
     (set! ana/*cljs-ns* 'cljs.user)
-    
+    (set! *original-clj-ns* *ns*)
+
     (print "Type `")
     (pr :cljs/quit)
     (println "` to stop the ClojureScript REPL")))
@@ -209,8 +214,9 @@
         (swap! session (partial merge {#'*cljs-repl-env* *cljs-repl-env*
                                        #'*eval* *eval*
                                        #'*cljs-repl-options* *cljs-repl-options*
-                                       #'ana/*cljs-ns* ana/*cljs-ns*})))
-      
+                                       #'ana/*cljs-ns* ana/*cljs-ns*
+                                       #'*original-clj-ns* nil})))
+
       (with-bindings (if cljs-active?
                        {#'load-file/load-file-code load-file-code}
                        {})
