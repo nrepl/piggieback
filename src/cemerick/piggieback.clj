@@ -92,7 +92,8 @@
         escaping-ns (atom ana/*cljs-ns*)]
     (returning
       (with-bindings (merge {#'cljsrepl/*cljs-verbose* verbose
-                             #'ana/*cljs-warn-on-undeclared* warn-on-undeclared}
+                             #'ana/*cljs-warnings* (assoc ana/*cljs-warnings*
+                                                          :undeclared warn-on-undeclared)}
                        (when explicit-ns {#'ana/*cljs-ns* explicit-ns}))
         (let [special-fns (merge cljsrepl/default-special-fns special-fns)
               set-ns! #(when (not= explicit-ns ana/*cljs-ns*)
