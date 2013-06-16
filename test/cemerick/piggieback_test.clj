@@ -7,6 +7,13 @@
 (def ^:dynamic *server-port* nil)
 (def ^:dynamic *session*)
 
+(defn assert-exit-ns [session ns]
+  (assert (= ["user"]
+             (filter identity
+                     (map :ns (nrepl/message
+                                session
+                                {:op "eval" :code "clojure.core/*ns*"}))))))
+
 (defn repl-server-fixture
   [f]
   (with-open [server (server/start-server
@@ -22,7 +29,8 @@
                   *session* session]
         (f))
         (finally
-          (doall (nrepl/message session {:op "eval" :code ":cljs/quit"})))))))
+          (doall (nrepl/message session {:op "eval" :code ":cljs/quit"}))
+          (assert-exit-ns session "user"))))))
 
 (use-fixtures :once repl-server-fixture)
 
