@@ -1,4 +1,4 @@
-(defproject com.cemerick/piggieback "0.0.5-SNAPSHOT"
+(defproject com.cemerick/piggieback "0.0.5"
   :description "Adding support for running ClojureScript REPLs over nREPL."
   :url "http://github.com/cemerick/piggieback"
   :license {:name "Eclipse Public License"
@@ -6,11 +6,9 @@
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/tools.nrepl "0.2.2"]
-                 [org.clojure/clojurescript "0.0-1830"]]
+                 [org.clojure/clojurescript "0.0-1835"]]
   
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
-  
-  :profiles {:1.5 {:dependencies [[org.clojure/clojure "1.5.0-beta2"]]}}
   
   :deploy-repositories {"releases" {:url "https://oss.sonatype.org/service/local/staging/deploy/maven2/" :creds :gpg}
                         "snapshots" {:url "https://oss.sonatype.org/content/repositories/snapshots/" :creds :gpg}}
