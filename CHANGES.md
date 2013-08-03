@@ -5,7 +5,8 @@
 * _Breaking change_: ClojureScript REPL environments no longer need to / should
   be explicitly `-setup` prior to use with `cemerick.piggieback/cljs-repl`.
   i.e. this:
-```
+
+  ```
 (cemerick.piggieback/cljs-repl
   :repl-env (doto (create-some-cljs-repl-env)
               cljs.repl/-setup))
