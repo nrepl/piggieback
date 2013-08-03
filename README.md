@@ -22,10 +22,10 @@ Piggieback provides an alternative ClojureScript REPL entry point
 (`cemerick.piggieback/cljs-repl`) that lifts a ClojureScript REPL on top of any
 nREPL session, while accepting all the same options as `cljs.repl/repl`.
 
-## Installation
+## "Installation"
 
-Piggieback is available in Maven Central. Add this `:dependency` to your Leiningen
-`project.clj`:
+Piggieback is available in Maven Central. Add this `:dependency` to your
+Leiningen `project.clj`:
 
 ```clojure
 [com.cemerick/piggieback "0.0.5"]
@@ -44,15 +44,19 @@ Or, add this to your Maven project's `pom.xml`:
 Piggieback is compatible with Clojure 1.4.0+, and _requires_ ClojureScript
 `0.0-1835` or later.
 
+## Changelog
+
+Available @
+[CHANGES.md](https://github.com/cemerick/piggieback/blob/master/CHANGES.md).
+
 ## Usage
 
 Piggieback is nREPL middleware, so you need to add it to your nREPL server's
 middleware stack.
 
-If you're using Leniningen v2.0+ (**v2.0-preview9** is the minimum
-required to use this configuration), you can add
-this to your `project.clj` to automagically mix the Piggieback middleware into
-the stack that `lein repl` will use when starting nREPL:
+If you're using Leniningen v2.0+, you can add this to your `project.clj` to
+automagically mix the Piggieback middleware into the stack that `lein repl` will
+use when starting nREPL:
 
 ```clojure
 :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
@@ -166,8 +170,8 @@ cljs.user=> (<3 "nREPL still" "ClojureScript")
 ### Browser REPL
 
 Piggieback can be used with other ClojureScript REPL environments as well, such
-as browser-repl.  For example, start with this `index.html` file in your
-project (by the way, nearly all of this is cribbed from the [browser REPL
+as browser-repl.  For example, start with this `index.html` file in your project
+(by the way, nearly all of this is cribbed from the [browser REPL
 tutorial](https://github.com/clojure/clojurescript/wiki/The-REPL-and-Evaluation-Environments):
 
 ```html
@@ -210,15 +214,14 @@ browser-repl environment instead of the Rhino default:
 (require 'cljs.repl.browser)
 
 (cemerick.piggieback/cljs-repl
-  :repl-env (doto (cljs.repl.browser/repl-env :port 9000)
-              cljs.repl/-setup))
+  :repl-env (cljs.repl.browser/repl-env :port 9000))
 ```
 
-Now go to [http://localhost:9000](http://localhost:9000); note that you *must* access the
-`index.html` page you created earlier through the same server that it will
-connect to the browser-repl through due to the JavaScript "same-origin" policy.
-Doing anything else (such as opening the `index.html` file from disk directly)
-will _not_ work, and will probably result in your ClojureScript/nREPL
+Now go to [http://localhost:9000](http://localhost:9000); note that you *must*
+access the `index.html` page you created earlier through the same server that it
+will connect to the browser-repl through due to the JavaScript "same-origin"
+policy.  Doing anything else (such as opening the `index.html` file from disk
+directly) will _not_ work, and will probably result in your ClojureScript/nREPL
 session being hung permanently with no feedback.
 
 Once the browser-repl is connected, we evaluate ClojureScript expressions in the
@@ -239,10 +242,10 @@ puzzle out all sorts of ClojureScript difficulty I had along the way.)
 
 ## Need Help?
 
-Send a message to the [clojure-tools](http://groups.google.com/group/clojure-tools)
-mailing list, or ping `cemerick` on freenode irc or 
-[twitter](http://twitter.com/cemerick) if you have questions
-or would like to contribute patches.
+Send a message to the
+[clojure-tools](http://groups.google.com/group/clojure-tools) mailing list, or
+ping `cemerick` on freenode irc or [twitter](http://twitter.com/cemerick) if you
+have questions or would like to contribute patches.
 
 ## License
 
