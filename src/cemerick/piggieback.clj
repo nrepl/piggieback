@@ -54,19 +54,11 @@
     "out"
     (Context/javaToJS out (:scope rhino-env))))
 
-(defn rhino-repl-env
-  "Returns a new Rhino ClojureScript REPL environment that has been
-   set up via `cljs.repl/-setup`."
+(defn ^{:deprecated true} rhino-repl-env
+  "Returns a new Rhino ClojureScript REPL environment. This function is
+  deprecated, and simply delegates to `cljs.repl.rhino/repl-env`."
   []
-  (with-rhino-context
-    (doto (rhino/repl-env)
-      cljsrepl/-setup
-      ; rhino/rhino-setup maps System/out to "out" and therefore the target of
-      ; cljs' *print-fn*! :-(
-      (map-stdout *out*)
-      ; rhino/repl-env calls (Context/enter) without a (Context/exit)
-      (squelch-rhino-context-error
-        (Context/exit)))))
+  (rhino/repl-env))
 
 (defn- quit-cljs-repl
   []
@@ -142,6 +134,22 @@
   [code file-path file-name]
   (wrap-exprs (list `load-file-contents code file-path file-name)))
 
+(defn- rhino-repl-env?
+  [repl-env]
+  (instance? cljs.repl.rhino.RhinoEnv repl-env))
+
+(defn- setup-rhino-env
+  [rhino-env]
+  (with-rhino-context
+    (doto rhino-env
+      cljsrepl/-setup
+      ; rhino/rhino-setup maps System/out to "out" and therefore the target of
+      ; cljs' *print-fn*! :-(
+      (map-stdout *out*)
+      ; rhino/repl-env calls (Context/enter) without a (Context/exit)
+      (squelch-rhino-context-error
+        (Context/exit)))))
+
 (defn cljs-repl
   "Starts a ClojureScript REPL over top an nREPL session.  Accepts
    all options usually accepted by e.g. cljs.repl/repl. Also accepts optional
@@ -155,7 +163,7 @@
   [& {:keys [repl-env eval] :as options}]
   (let [repl-env (or repl-env (rhino-repl-env))
         eval (or eval
-               (when (instance? cljs.repl.rhino.RhinoEnv repl-env)
+               (when (rhino-repl-env? repl-env)
                  #(with-rhino-context (apply cljs-eval %&)))
                #(apply cljs-eval %&))]
     ; :warn-on-undeclared default from ClojureScript's script/repljs
@@ -167,6 +175,10 @@
     (set! *eval* eval)
     (set! ana/*cljs-ns* 'cljs.user)
     (set! *original-clj-ns* *ns*)
+
+    (if (rhino-repl-env? repl-env)
+      (setup-rhino-env repl-env)
+      (cljsrepl/-setup repl-env))
 
     (print "Type `")
     (pr :cljs/quit)
