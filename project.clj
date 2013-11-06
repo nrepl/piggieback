@@ -1,4 +1,4 @@
-(defproject com.cemerick/piggieback "0.1.0"
+(defproject com.cemerick/piggieback "0.1.1-SNAPSHOT"
   :description "Adding support for running ClojureScript REPLs over nREPL."
   :url "http://github.com/cemerick/piggieback"
   :license {:name "Eclipse Public License"
