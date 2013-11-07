@@ -59,7 +59,8 @@
   "Returns a new Rhino ClojureScript REPL environment. This function is
   deprecated, and simply delegates to `cljs.repl.rhino/repl-env`."
   []
-  (rhino/repl-env))
+  (assoc (rhino/repl-env)
+    ::env/compiler (env/default-compiler-env)))
 
 (defn- quit-cljs-repl
   []
