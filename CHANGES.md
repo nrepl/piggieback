@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `0.1.2`
+
+Released to fix a derp in `0.1.1`.
+
 ## `0.1.1`
 
 * Adds support for ClojureScript compiler environments introduced in `0.0-2014`.
