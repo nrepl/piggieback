@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## `0.1.1`
+
+* Adds support for ClojureScript compiler environments introduced in `0.0-2014`.
+  Now requires that version of ClojureScript or higher.
+
 ## `0.1.0`
 
 * _Breaking change_: ClojureScript REPL environments no longer need to / should

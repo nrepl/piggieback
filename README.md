@@ -28,7 +28,7 @@ Piggieback is available in Maven Central. Add this `:dependency` to your
 Leiningen `project.clj`:
 
 ```clojure
-[com.cemerick/piggieback "0.1.0"]
+[com.cemerick/piggieback "0.1.1"]
 ```
 
 Or, add this to your Maven project's `pom.xml`:
@@ -37,12 +37,12 @@ Or, add this to your Maven project's `pom.xml`:
 <dependency>
   <groupId>com.cemerick</groupId>
   <artifactId>piggieback</artifactId>
-  <version>0.1.0</version>
+  <version>0.1.1</version>
 </dependency>
 ```
 
 Piggieback is compatible with Clojure 1.4.0+, and _requires_ ClojureScript
-`0.0-1835` or later.
+`0.0-2014` or later.
 
 ## Changelog
 
