@@ -8,13 +8,14 @@
                                  [middleware :refer (set-descriptor!)])
             [clojure.tools.nrepl.middleware.load-file :as load-file]
             [clojure.tools.nrepl.middleware.interruptible-eval :as ieval]
+            [clojure.tools.reader :as reader]
+            [clojure.tools.reader.reader-types :as readers]
             [cljs.env :as env]
             [cljs.repl :as cljsrepl]
             [cljs.analyzer :as ana]
             [cljs.tagged-literals :as tags]
             [cljs.repl.rhino :as rhino])
   (:import (org.mozilla.javascript Context ScriptableObject)
-           clojure.lang.LineNumberingPushbackReader
            java.io.StringReader))
 
 (def ^:private ^:dynamic *cljs-repl-env* nil)
@@ -194,21 +195,33 @@
   [{:keys [code session ns] :as msg}]
   (let [code (if-not (string? code)
                code
-               (let [reader (LineNumberingPushbackReader. (StringReader. code))
+               (let [str-reader (StringReader. code)
                      end (Object.)
-                     ns-sym (or (when ns (symbol ns)) ana/*cljs-ns*)]
-                 (->> #(binding [*ns* (create-ns ns-sym)
-                                 ana/*cljs-ns* ns-sym
-                                 *data-readers* tags/*cljs-data-readers*]
-                         (try
-                           (read reader false end)
-                           (catch Exception e
-                             (binding [*out* (@session #'*err*)]
-                               (println (.getMessage e))
-                               ::error))))
-                   repeatedly
-                   (take-while (complement #{end}))
-                   (remove #{::error}))))]
+                     ns-sym (or (when ns (symbol ns)) ana/*cljs-ns*)
+                     repl-env (@session #'*cljs-repl-env*)]
+                 (->> #(env/with-compiler-env
+                         (or (::env/compiler repl-env)
+                             (env/default-compiler-env))
+                         (binding [ana/*cljs-ns* ns-sym
+                                   *ns* (create-ns ns-sym)
+                                   reader/*data-readers* tags/*cljs-data-readers*
+                                   reader/*alias-map*
+                                   (apply merge
+                                          ((juxt :requires :require-macros)
+                                           (ana/get-namespace ns-sym)))]
+                           (try
+                             (let [rdr (readers/source-logging-push-back-reader
+                                        (java.io.PushbackReader. str-reader)
+                                        1
+                                        "NO_SOURCE_FILE")]
+                               (reader/read rdr nil end))
+                             (catch Exception e
+                               (binding [*out* (@session #'*err*)]
+                                 (println (.getMessage e))
+                                 ::error)))))
+                      repeatedly
+                      (take-while (complement #{end}))
+                      (remove #{::error}))))]
     (assoc msg :code (apply wrap-exprs code))))
 
 (defn- cljs-ns-transport
