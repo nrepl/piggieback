@@ -44,7 +44,7 @@ Or, add this to your Maven project's `pom.xml`:
 Piggieback is compatible with Clojure 1.4.0+, and _requires_ ClojureScript
 `0.0-2014` or later.
 
-Refer to [#compatibility-notes]("Compatibility Notes") to see if your preferred
+Refer to ["Compatibility Notes"](#compatibility-notes) to see if your preferred
 environment has known issues with Piggieback.
 
 ## Changelog
