@@ -44,6 +44,9 @@ Or, add this to your Maven project's `pom.xml`:
 Piggieback is compatible with Clojure 1.4.0+, and _requires_ ClojureScript
 `0.0-2014` or later.
 
+Refer to [#compatibility-notes]("Compatibility Notes") to see if your preferred
+environment has known issues with Piggieback.
+
 ## Changelog
 
 Available @
@@ -239,6 +242,17 @@ browser:
 (Huge thanks to [Nelson Morris](http://twitter.com/xeqixeqi) for doing the
 initial experimentation with Piggieback + browser-repl, and for helping me
 puzzle out all sorts of ClojureScript difficulty I had along the way.)
+
+## Compatibility notes
+
+**Note that Piggieback (and all other ClojureScript REPLs, for that matter)
+is incompatible with [ac-nrepl](https://github.com/clojure-emacs/ac-nrepl).**
+ac-nrepl implements its code completion backend by evaluating Clojure-specific
+expressions to interrogate the runtime.  When you have a ClojureScript REPL
+hooked up via Piggieback, these expressions end up pelting the ClojureScript
+compiler, which doesn't appreciate it (as you might imagine).  The result can
+be odd "hangs" of the REPL, information-free `StackOverflow` exceptions, and
+other ills.
 
 ## Need Help?
 
