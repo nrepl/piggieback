@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## `0.1.3`
+## [`0.1.3`](https://github.com/cemerick/piggieback/issues?milestone=3&state=closed)
 
 * Piggieback now uses tools.reader to read expressions sent for evaluation when
   a ClojureScript REPL environment is active. This preserves proper source
