@@ -3,6 +3,14 @@
 [nREPL](http://github.com/clojure/tools.nrepl) middleware that enables the
 bootstrap of a ClojureScript REPL on top of an nREPL session.
 
+#### **Wait!**
+
+Are you just getting started with ClojureScript or using ClojureScript
+in a REPL? You should almost certainly be starting with
+[Austin](https://github.com/cemerick/austin); it uses Piggieback, but wraps it
+up with a bunch of helpful utilities, auto-configuration of your `project.clj`,
+and other goodies.
+
 ## Why?
 
 The default ClojureScript REPL (as described in the ["quick
