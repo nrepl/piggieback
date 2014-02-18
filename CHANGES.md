@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## `0.1.3`
+
+* Piggieback now uses tools.reader to read expressions sent for evaluation when
+  a ClojureScript REPL environment is active. This preserves proper source
+  information (useful for source maps) and allows Piggieback to participate in
+  the aliasing mechanism used in ClojureScript to support namespace
+  alias-qualified keywords e.g. `::alias/keyword` (gh-19)
+* The ClojureScript support for the `load-file` nREPL operation now correctly
+  provides the source file's path instead of its name to the compiler. (gh-24)
+
 ## `0.1.2`
 
 Released to fix a derp in `0.1.1`.
