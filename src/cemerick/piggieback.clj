@@ -4,7 +4,7 @@
   (:require [clojure.tools.nrepl :as nrepl]
             (clojure.tools.nrepl [transport :as transport]
                                  [server :as server]
-                                 [misc :refer (returning)]
+                                 [misc :refer (returning response-for)]
                                  [middleware :refer (set-descriptor!)])
             [clojure.tools.nrepl.middleware.load-file :as load-file]
             [clojure.tools.nrepl.middleware.interruptible-eval :as ieval]
@@ -22,6 +22,7 @@
 (def ^:private ^:dynamic *eval* nil)
 (def ^:private ^:dynamic *cljs-repl-options* nil)
 (def ^:private ^:dynamic *original-clj-ns* nil)
+(def ^:private ^:dynamic *cljs-saved-env* nil)
 
 (defmacro ^:private squelch-rhino-context-error
   "Catches and silences the exception thrown by (Context/exit)
@@ -63,15 +64,25 @@
   (assoc (rhino/repl-env)
     ::env/compiler (env/default-compiler-env)))
 
-(defn- quit-cljs-repl
-  []
-  (squelch-rhino-context-error
-    (cljsrepl/-tear-down *cljs-repl-env*))
+(defn- clear-cljs-repl-vars []
   (set! *cljs-repl-env* nil)
   (set! *eval* nil)
   (set! ana/*cljs-ns* 'cljs.user)
   (set! *ns* *original-clj-ns*)
   (set! *original-clj-ns* nil))
+
+(defn- quit-cljs-repl
+  []
+  (squelch-rhino-context-error
+    (cljsrepl/-tear-down *cljs-repl-env*))
+  (clear-cljs-repl-vars))
+
+(defn- pause-cljs-repl []
+  (set! *cljs-saved-env*
+        {:repl-env *cljs-repl-env*
+         :eval *eval*
+         :cljs-ns ana/*cljs-ns*})
+  (clear-cljs-repl-vars))
 
 (defn cljs-eval
   "Evaluates the expression [expr] (should already be read) using the
@@ -100,6 +111,8 @@
                           (reset! escaping-ns ana/*cljs-ns*))]
            (cond
             (= expr :cljs/quit) (do (quit-cljs-repl) :cljs/quit)
+
+            (= expr :cljs/pause) (do (pause-cljs-repl) :cljs/pause)
 
             (and (seq? expr) (find special-fns (first expr)))
             (returning
@@ -191,6 +204,13 @@
     (pr :cljs/quit)
     (println "` to stop the ClojureScript REPL")))
 
+(defn unpause-cljs-repl []
+  (when-let [{:keys [repl-env eval cljs-ns]} *cljs-saved-env*]
+    (set! *cljs-repl-env* repl-env)
+    (set! *eval* eval)
+    (set! ana/*cljs-ns* cljs-ns)
+    (set! *original-clj-ns* *ns*)))
+
 (defn- prep-code
   [{:keys [code session ns] :as msg}]
   (let [code (if-not (string? code)
@@ -238,23 +258,41 @@
 (defn wrap-cljs-repl
   [h]
   (fn [{:keys [op session transport] :as msg}]
-    (let [cljs-active? (@session #'*cljs-repl-env*)
-          msg (assoc msg :transport (cljs-ns-transport transport))
-          msg (if (and cljs-active? (= op "eval")) (prep-code msg) msg)]
-      ; ensure that bindings exist so cljs-repl can set! 'em
-      (when-not (contains? @session #'*cljs-repl-env*)
-        (swap! session (partial merge {#'*cljs-repl-env* *cljs-repl-env*
-                                       #'*eval* *eval*
-                                       #'*cljs-repl-options* *cljs-repl-options*
-                                       #'ana/*cljs-ns* ana/*cljs-ns*
-                                       #'*original-clj-ns* nil})))
+    (case op
+      "piggieback-repl-info"
+      (transport/send transport (response-for msg :active-repl
+                                              (if (@session #'*cljs-repl-env*)
+                                                "Clojurescript"
+                                                "Clojure")
+                                              :cljs-saved
+                                              (if (@session #'*cljs-saved-env*)
+                                                "true"
+                                                "false")))
 
-      (with-bindings (if cljs-active?
-                       {#'load-file/load-file-code load-file-code}
-                       {})
-        (h msg)))))
+
+      (let [cljs-active? (@session #'*cljs-repl-env*)
+            msg (assoc msg :transport (cljs-ns-transport transport))
+            msg (if (and cljs-active? (= op "eval")) (prep-code msg) msg)]
+                                        ; ensure that bindings exist so cljs-repl can set! 'em
+        (when-not (contains? @session #'*cljs-repl-env*)
+          (swap! session (partial merge {#'*cljs-repl-env* *cljs-repl-env*
+                                         #'*eval* *eval*
+                                         #'*cljs-repl-options* *cljs-repl-options*
+                                         #'ana/*cljs-ns* ana/*cljs-ns*
+                                         #'*original-clj-ns* nil
+                                         #'*cljs-saved-env* *cljs-repl-env*})))
+
+        (with-bindings (if cljs-active?
+                         {#'load-file/load-file-code load-file-code}
+                         {})
+          (h msg))))))
 
 (set-descriptor! #'wrap-cljs-repl
   {:requires #{"clone"}
    :expects #{"load-file" "eval"}
-   :handles {}})
+   :handles {"piggieback-repl-info"
+             {:doc "Indicates whether a Clojure or Clojurescript REPL is running"
+              :requires {}
+              :optional {}
+              :returns {"active-repl" "The name of the active REPL (Clojure or Clojurescript)."
+                        "cljs-saved" "Returns 'true' if there is a saved Clojurescript REPL."}}}})
