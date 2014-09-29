@@ -73,6 +73,15 @@
   (set! *ns* *original-clj-ns*)
   (set! *original-clj-ns* nil))
 
+(defn read-value
+  "Try to read return value as a Clojure expression"
+  [value]
+  (try
+    (read-string value)
+    (catch Exception _
+      (when (string? value)
+        (println value)))))
+
 (defn cljs-eval
   "Evaluates the expression [expr] (should already be read) using the
    given ClojureScript REPL environment [repl-env] and a map of
@@ -114,11 +123,7 @@
                                               expr
                                               (#'cljsrepl/wrap-fn expr))]
               (set-ns!)
-              (try
-                (read-string ret)
-                (catch Exception _
-                  (when (string? ret)
-                    (println ret))))))))
+              (read-value ret)))))
        (when *original-clj-ns*
          (set! ana/*cljs-ns* @escaping-ns)
          (set! *ns* (create-ns @escaping-ns)))))))
@@ -130,10 +135,25 @@
                '~expr
                @#'*cljs-repl-options*)))
 
+(defn wrap-form
+  [form]
+  (if (and (seq? form) (= 'ns (first form)))
+    form
+    (list 'cljs.core.pr-str form)))
+
+(defn load-stream [repl-env filename res]
+  (let [env (ana/empty-env)]
+    (when-let [forms (seq (ana/forms-seq res filename))]
+      (doseq [form (butlast forms)]
+        (let [env (assoc env :ns (ana/get-namespace ana/*cljs-ns*))]
+          (cljsrepl/evaluate-form repl-env env filename form)))
+      (let [env (assoc env :ns (ana/get-namespace ana/*cljs-ns*))]
+        (read-value (cljsrepl/evaluate-form repl-env env filename (last forms) wrap-form))))))
+
 (defn- load-file-contents
   [repl-env code file-path file-name]
   (binding [ana/*cljs-ns* 'cljs.user]
-    (cljs.repl/load-stream repl-env file-path (java.io.StringReader. code))))
+    (load-stream repl-env file-path (java.io.StringReader. code))))
 
 (defn- load-file-code
   [code file-path file-name]
