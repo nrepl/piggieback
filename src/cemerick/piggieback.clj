@@ -141,14 +141,21 @@
     form
     (list 'cljs.core.pr-str form)))
 
+(defn evaluate-load-form
+  "Cljs load-form with in-ns special-fn"
+  [repl-env env filename form wrap-form]
+  (if (and (seq? form) (= 'in-ns (first form)))
+    (apply (cljsrepl/default-special-fns 'in-ns) form)
+    (cljsrepl/evaluate-form repl-env env filename form wrap-form)))
+
 (defn load-stream [repl-env filename res]
   (let [env (ana/empty-env)]
     (when-let [forms (seq (ana/forms-seq res filename))]
       (doseq [form (butlast forms)]
         (let [env (assoc env :ns (ana/get-namespace ana/*cljs-ns*))]
-          (cljsrepl/evaluate-form repl-env env filename form)))
+          (evaluate-load-form repl-env env filename form identity)))
       (let [env (assoc env :ns (ana/get-namespace ana/*cljs-ns*))]
-        (read-value (cljsrepl/evaluate-form repl-env env filename (last forms) wrap-form))))))
+        (read-value (evaluate-load-form repl-env env filename (last forms) wrap-form))))))
 
 (defn- load-file-contents
   [repl-env code file-path file-name]
