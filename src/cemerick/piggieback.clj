@@ -147,7 +147,7 @@
   [rhino-env]
   (with-rhino-context
     (doto rhino-env
-      cljsrepl/-setup
+      (cljsrepl/-setup nil)
       ; rhino/rhino-setup maps System/out to "out" and therefore the target of
       ; cljs' *print-fn*! :-(
       (map-stdout *out*)
@@ -185,7 +185,7 @@
       (or (::env/compiler repl-env) (env/default-compiler-env))
       (if (rhino-repl-env? repl-env)
         (setup-rhino-env repl-env)
-        (cljsrepl/-setup repl-env)))
+        (cljsrepl/-setup repl-env nil)))
 
     (print "Type `")
     (pr :cljs/quit)
