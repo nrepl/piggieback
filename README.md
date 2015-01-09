@@ -49,8 +49,8 @@ Or, add this to your Maven project's `pom.xml`:
 </dependency>
 ```
 
-Piggieback is compatible with Clojure 1.4.0+, and _requires_ ClojureScript
-`0.0-2014` or later.
+Piggieback is compatible with Clojure 1.5.1+, and _requires_ ClojureScript
+`0.0-2665` or later.
 
 Refer to ["Compatibility Notes"](#compatibility-notes) to see if your preferred
 environment has known issues with Piggieback.
@@ -177,6 +177,28 @@ cljs.user=> (<3 "nREPL still" "ClojureScript")
 ```
 
 (The ugly `ThreadDeath` exception will be eliminated eventually.)
+
+### Node.js REPL
+
+A Node.js REPL environment implementation is included in ClojureScript startingn
+with version 2665. You can use this via nREPL and Piggieback, too:
+
+```
+user=> (require '[cljs.repl :as repl])
+nil
+user=> (require '[cljs.repl.node :as node])
+nil
+user=> (cemerick.piggieback/cljs-repl
+         :repl-env (node/repl-env)
+         :output-dir ".cljs_node_repl"
+         :cache-analysis true
+         :source-map true)
+ClojureScript Node.js REPL server listening on 54718
+Type `:cljs/quit` to stop the ClojureScript REPL
+nil
+cljs.user=> (.-version js/process)
+"v0.10.25"
+```
 
 ### Browser REPL
 

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [`0.1.4`](https://github.com/cemerick/piggieback/issues?q=milestone%3A0.1.4+is%3Aclosed)
+
+* Change to support updated `cljs.repl` API, per
+  https://github.com/clojure/clojurescript/wiki/Custom-REPLs. Piggieback now
+  requires ClojureScript >= 2665.
+
 ## [`0.1.3`](https://github.com/cemerick/piggieback/issues?milestone=3&state=closed)
 
 * Piggieback now uses tools.reader to read expressions sent for evaluation when
