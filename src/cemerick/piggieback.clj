@@ -83,7 +83,7 @@
    This is generally not going to be used by end users; rather,
    as the basis of alternative (usually not-Rhino, e.g. node/V8)
    `eval` functions passed to `cljs-repl`."
-  [repl-env expr {:keys [verbose warn-on-undeclared special-fns]}]
+  [repl-options repl-env expr {:keys [verbose warn-on-undeclared special-fns]}]
   (env/with-compiler-env
     (or (::env/compiler repl-env) (env/default-compiler-env))
     (let [explicit-ns (when (:ns ieval/*msg*) (symbol (:ns ieval/*msg*)))
@@ -102,9 +102,10 @@
             (= expr :cljs/quit) (do (quit-cljs-repl) :cljs/quit)
 
             (and (seq? expr) (find special-fns (first expr)))
-            (returning
-             (apply (get special-fns (first expr)) repl-env (rest expr))
-             (set-ns!))
+            (do
+              (returning
+               ((get special-fns (first expr)) repl-env @env/*compiler* expr repl-options)
+               (set-ns!)))
 
             :default
             (let [ret (cljsrepl/evaluate-form repl-env
@@ -169,12 +170,14 @@
   (let [repl-env (or repl-env (rhino-repl-env))
         eval (or eval
                (when (rhino-repl-env? repl-env)
-                 #(with-rhino-context (apply cljs-eval %&)))
-               #(apply cljs-eval %&))]
+                 #(with-rhino-context (apply cljs-eval options %&)))
+               #(apply cljs-eval options %&))]
     ; :warn-on-undeclared default from ClojureScript's script/repljs
     (set! *cljs-repl-options* (-> (merge {:warn-on-undeclared true} options)
                                 (update-in [:special-fns] assoc
-                                           `load-file-contents #'load-file-contents)
+                                           `load-file-contents
+                                           (fn [repl-env compiler-env load-file-expr repl-options]
+                                             (apply load-file-contents repl-env (rest load-file-expr))))
                                 (dissoc :repl-env :eval)))
     (set! *cljs-repl-env* repl-env)
     (set! *eval* eval)
