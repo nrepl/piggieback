@@ -168,27 +168,29 @@
              that is called once for each ClojureScript expression to be evaluated."
   [& {:keys [repl-env eval] :as options}]
   (let [repl-env (or repl-env (rhino-repl-env))
+        options (-> (merge {:warn-on-undeclared true} options)
+                    (update-in [:special-fns] assoc
+                               `load-file-contents
+                               (fn [repl-env compiler-env load-file-expr repl-options]
+                                 (apply load-file-contents repl-env (rest load-file-expr))))
+                    (dissoc :repl-env :eval))
         eval (or eval
-               (when (rhino-repl-env? repl-env)
-                 #(with-rhino-context (apply cljs-eval options %&)))
-               #(apply cljs-eval options %&))]
-    ; :warn-on-undeclared default from ClojureScript's script/repljs
-    (set! *cljs-repl-options* (-> (merge {:warn-on-undeclared true} options)
-                                (update-in [:special-fns] assoc
-                                           `load-file-contents
-                                           (fn [repl-env compiler-env load-file-expr repl-options]
-                                             (apply load-file-contents repl-env (rest load-file-expr))))
-                                (dissoc :repl-env :eval)))
-    (set! *cljs-repl-env* repl-env)
+                 (when (rhino-repl-env? repl-env)
+                   #(with-rhino-context (apply cljs-eval options %&)))
+                 #(apply cljs-eval options %&))]
+
+    (set! *cljs-repl-options* options)
     (set! *eval* eval)
     (set! ana/*cljs-ns* 'cljs.user)
     (set! *original-clj-ns* *ns*)
 
     (env/with-compiler-env
-      (or (::env/compiler repl-env) (env/default-compiler-env))
-      ((if (rhino-repl-env? repl-env) setup-rhino-env cljsrepl/-setup)
-       repl-env
-       (dissoc options :repl-env :eval)))
+      (or (::env/compiler repl-env) (env/default-compiler-env options))
+      (let [repl-env (assoc repl-env ::env/compiler env/*compiler*)]
+        (set! *cljs-repl-env* repl-env)
+        ((if (rhino-repl-env? repl-env) setup-rhino-env cljsrepl/-setup)
+         repl-env
+         options)))
 
     (print "Type `")
     (pr :cljs/quit)
