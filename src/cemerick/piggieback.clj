@@ -104,7 +104,7 @@
             (and (seq? expr) (find special-fns (first expr)))
             (do
               (returning
-               ((get special-fns (first expr)) repl-env @env/*compiler* expr repl-options)
+               ((get special-fns (first expr)) repl-env {:context :expr :locals {}} expr repl-options)
                (set-ns!)))
 
             :default
