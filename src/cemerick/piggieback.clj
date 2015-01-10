@@ -184,9 +184,14 @@
     (set! ana/*cljs-ns* 'cljs.user)
     (set! *original-clj-ns* *ns*)
 
-    (env/with-compiler-env
-      (or (::env/compiler repl-env) (env/default-compiler-env options))
-      (let [repl-env (assoc repl-env ::env/compiler env/*compiler*)]
+    (let [compiler-env (or (::env/compiler repl-env) (env/default-compiler-env options))
+          repl-env (if (::env/compiler repl-env)
+                     ; some repl env implementations (e.g. austin's DelegatingREPLEnv)
+                     ; implement ILookup, but not Associative; don't attempt to
+                     ; assoc if the repl env has a compiler env already
+                     repl-env
+                     (assoc repl-env ::env/compiler compiler-env))]
+      (env/with-compiler-env compiler-env
         (set! *cljs-repl-env* repl-env)
         ((if (rhino-repl-env? repl-env) setup-rhino-env cljsrepl/-setup)
          repl-env
