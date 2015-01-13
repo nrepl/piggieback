@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## [`0.1.5`](https://github.com/cemerick/piggieback/issues?q=milestone%3A0.1.5+is%3Aclosed)
+
+* Add support for "new style" ClojureScript special REPL functions. Piggieback
+  is now completely compatible with ClojureScript >= 2665. (gh-38)
+* Fix to support ClojureScript-provided node.js REPL environment (gh-39)
+
 ## [`0.1.4`](https://github.com/cemerick/piggieback/issues?q=milestone%3A0.1.4+is%3Aclosed)
 
 * Change to support updated `cljs.repl` API, per
