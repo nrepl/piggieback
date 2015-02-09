@@ -63,15 +63,19 @@
   (assoc (rhino/repl-env)
     ::env/compiler (env/default-compiler-env)))
 
-(defn- quit-cljs-repl
+(defn- reset-repl-state
   []
-  (squelch-rhino-context-error
-    (cljsrepl/-tear-down *cljs-repl-env*))
   (set! *cljs-repl-env* nil)
   (set! *eval* nil)
   (set! ana/*cljs-ns* 'cljs.user)
   (set! *ns* *original-clj-ns*)
   (set! *original-clj-ns* nil))
+
+(defn- quit-cljs-repl
+  []
+  (squelch-rhino-context-error
+    (cljsrepl/-tear-down *cljs-repl-env*))
+  (reset-repl-state))
 
 (defn cljs-eval
   "Evaluates the expression [expr] (should already be read) using the
@@ -191,12 +195,15 @@
                      ; assoc if the repl env has a compiler env already
                      repl-env
                      (assoc repl-env ::env/compiler compiler-env))]
-      (env/with-compiler-env compiler-env
-        (set! *cljs-repl-env* repl-env)
-        ((if (rhino-repl-env? repl-env) setup-rhino-env cljsrepl/-setup)
-         repl-env
-         options)))
-
+      (try
+        (env/with-compiler-env compiler-env
+          (set! *cljs-repl-env* repl-env)
+          ((if (rhino-repl-env? repl-env) setup-rhino-env cljsrepl/-setup)
+           repl-env
+           options))
+        (catch Exception e
+          (reset-repl-state)
+          (throw e))))
     (print "Type `")
     (pr :cljs/quit)
     (println "` to stop the ClojureScript REPL")))
