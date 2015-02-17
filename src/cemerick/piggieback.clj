@@ -180,8 +180,8 @@
                     (dissoc :repl-env :eval))
         eval (or eval
                  (when (rhino-repl-env? repl-env)
-                   #(with-rhino-context (apply cljs-eval options %&)))
-                 #(apply cljs-eval options %&))]
+                   #(with-rhino-context (apply cljs-eval *cljs-repl-options* %&)))
+                 #(apply cljs-eval *cljs-repl-options* %&))]
 
     (set! *cljs-repl-options* options)
     (set! *eval* eval)
@@ -198,9 +198,10 @@
       (try
         (env/with-compiler-env compiler-env
           (set! *cljs-repl-env* repl-env)
-          ((if (rhino-repl-env? repl-env) setup-rhino-env cljsrepl/-setup)
-           repl-env
-           options))
+          (when-let [merge-opts (:merge-opts ((if (rhino-repl-env? repl-env) setup-rhino-env cljsrepl/-setup)
+                                               repl-env
+                                               options))]
+            (set! *cljs-repl-options* (merge *cljs-repl-options* merge-opts))))
         (catch Exception e
           (reset-repl-state)
           (throw e))))
