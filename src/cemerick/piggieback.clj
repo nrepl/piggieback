@@ -12,6 +12,7 @@
             [clojure.tools.reader.reader-types :as readers]
             [cljs.env :as env]
             [cljs.repl :as cljsrepl]
+            [cljs.closure :as cljsc]
             [cljs.analyzer :as ana]
             [cljs.tagged-literals :as tags]
             [cljs.repl.rhino :as rhino])
@@ -188,7 +189,13 @@
     (set! ana/*cljs-ns* 'cljs.user)
     (set! *original-clj-ns* *ns*)
 
-    (let [compiler-env (or (::env/compiler repl-env) (env/default-compiler-env options))
+    (let [ups-deps (cljsc/get-upstream-deps)
+          
+          compiler-env (or (::env/compiler repl-env)
+                           (env/default-compiler-env
+                             (assoc options
+                               :ups-libs (:libs ups-deps)
+                               :ups-foreign-libs (:foreign-libs ups-deps))))
           repl-env (if (::env/compiler repl-env)
                      ; some repl env implementations (e.g. austin's DelegatingREPLEnv)
                      ; implement ILookup, but not Associative; don't attempt to
