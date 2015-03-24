@@ -1,7 +1,7 @@
 # Piggieback [![Travis CI status](https://secure.travis-ci.org/cemerick/piggieback.png)](http://travis-ci.org/#!/cemerick/piggieback/builds)
 
 [nREPL](http://github.com/clojure/tools.nrepl) middleware that enables the
-bootstrap of a ClojureScript REPL on top of an nREPL session.
+use of a ClojureScript REPL on top of an nREPL session.
 
 #### **Wait!**
 
@@ -15,20 +15,24 @@ and other goodies.
 
 The default ClojureScript REPL (as described in the ["quick
 start"](https://github.com/clojure/clojurescript/wiki/Quick-Start) tutorial)
-requires/assumes that it is running in a terminal environment; specifically:
+requires/assumes that it is running in a teletype environment; specifically:
 
 * that code to be evaluated is provided via `*in*`, and that results are
-* primarily printed to `*out*` that every REPL evaluation is performed in the
-* _same_ thread as that which started the REPL
+  primarily printed to `*out*`
+* that every REPL evaluation is performed in the same thread as that which
+  started the REPL
 
-nREPL does not provide for such things, and so starting the default
-ClojureScript REPL in an nREPL session yields a massive pile of `No Context
-associated with current Thread` errors, and resulting exceptions attempting to
-evaluate `core.cljs` and co.
+nREPL does not provide such guarantees, and so starting the default
+ClojureScript REPL in an nREPL session without the benefit of teletype support
+(which exists in e.g. `lein repl`, but not in other, non-terminal Clojure
+tooling) yields errors and/or lost output instead of a usable REPL.
 
 Piggieback provides an alternative ClojureScript REPL entry point
-(`cemerick.piggieback/cljs-repl`) that lifts a ClojureScript REPL on top of any
-nREPL session, while accepting all the same options as `cljs.repl/repl`.
+(`cemerick.piggieback/cljs-repl`) that changes an nREPL session into a
+ClojureScript REPL for `eval` and `load-file` operations, while accepting all
+the same options as `cljs.repl/repl`. When the ClojureScript REPL is terminated
+(by sending `:cljs/quit` for evaluation), the nREPL session is restored to it
+original state.
 
 ## "Installation"
 
@@ -50,10 +54,7 @@ Or, add this to your Maven project's `pom.xml`:
 ```
 
 Piggieback is compatible with Clojure 1.6.0+, and _requires_ ClojureScript
-`0.0-3148` or later.
-
-Refer to ["Compatibility Notes"](#compatibility-notes) to see if your preferred
-environment has known issues with Piggieback.
+`0.0-3148` or later and nREPL `0.2.9` or later.
 
 ## Changelog
 
@@ -91,8 +92,10 @@ handler:
 (Alternatively, you can add `wrap-cljs-repl` to your application's hand-tweaked
 nREPL handler.  Keep two things in mind when doing so:
 
-* Piggieback needs to be "above" something that can evaluate code, like
-  `clojure.tools.nrepl.middleware.interruptible-eval/interruptible-eval`.
+* Piggieback needs to be "above" nREPL's
+  `clojure.tools.nrepl.middleware.interruptible-eval/interruptible-eval`; it
+  doesn't use `interruptible-eval`'s evaluation machinery, but it does reuse its
+  execution queue and thus inherits its interrupt capability.
 * Piggieback depends upon persistent REPL sessions, like those provided by
   `clojure.tools.nrepl.middleware.session/session`.)
 
@@ -101,15 +104,15 @@ ClojureScript REPL from any nREPL-capable client (e.g.
 [Leiningen](http://leiningen.org),
 [REPL-y](https://github.com/trptcolin/reply/),
 [Counterclockwise](http://code.google.com/p/counterclockwise/),
-[nrepl.el](https://github.com/kingtim/nrepl.el), and so on).
+[CIDER](https://github.com/clojure-emacs/cider),
+[Cursive](http://cursiveclojure.com/), and so on).
 
 ### At the REPL
 
 ```
-la-mer:piggieback chas$ lein2 repl
+$ lein repl
 ....
-user=> (require 'cljs.repl.nashorn)
-user=> (cemerick.piggieback/cljs-repl (cljs.repl.nashorn/repl-env))
+user=> (cemerick.piggieback/cljs-repl (cljs.repl.rhino/repl-env))
 Type `:cljs/quit` to stop the ClojureScript REPL
 nil
 cljs.user=> (+ 1 1)
@@ -126,8 +129,8 @@ cljs.user=> (<3 "nREPL" "ClojureScript")
 cljs.user=> 
 ```
 
-Note that the REPL prompt changed after invoking
-`cemerick.piggieback/cljs-repl`; after that point, all expressions sent to the
+Notice that the REPL prompt changed after invoking
+`cemerick.piggieback/cljs-repl`? After that point, all expressions sent to the
 REPL are evaluated within the ClojureScript environment.  Of course, you can
 concurrently take advantage of all of nREPL's other facilities, including
 connecting to the server with other clients (so as to easily modify Clojure and
@@ -162,89 +165,13 @@ cljs.user=> (<3 "nREPL still" "ClojureScript")
 
 (The ugly `ThreadDeath` exception will be eliminated eventually.)
 
-### Browser REPL
+Piggieback works well with all known ClojureScript REPL environments, including
+the Rhino, Nashorn, Node, and browser REPLs.
 
-Piggieback can be used with other ClojureScript REPL environments as well, such
-as browser-repl.  For example, start with this `index.html` file in your project
-(by the way, nearly all of this is cribbed from the [browser REPL
-tutorial](https://github.com/clojure/clojurescript/wiki/The-REPL-and-Evaluation-Environments):
+## Acknowledgements
 
-```html
-<html>
-  <head>
-    <meta charset="UTF-8">
-    <title>Browser-connected REPL through nREPL with Piggieback</title>
-  </head>
-  <body>
-    <div id="content">
-      <script type="text/javascript" src="out/goog/base.js"></script>
-      <script type="text/javascript" src="piggieback_browser.js"></script>
-      <input type="text" name="afield" id="afield"/>      
-      <script type="text/javascript">
-        goog.require('piggieback_browser');
-      </script>
-    </div>
-  </body>
-</html>
-```
-
-Now create `piggieback_browser.cljs`:
-
-```clojure
-(ns piggieback-browser
-  (:require [clojure.browser.repl :as repl]))
-(repl/connect "http://localhost:9000/repl")
-```
-
-…and compile it:
-
-```
-$CLOJURESCRIPT/bin/cljsc piggieback_browser.cljs > piggieback_browser.js
-```
-
-Now start your ClojureScript REPL through Piggieback; but, this time, use the
-browser-repl environment instead of the Rhino default:
-
-```clojure
-(require 'cljs.repl.browser)
-
-(cemerick.piggieback/cljs-repl
-  (cljs.repl.browser/repl-env :port 9000))
-```
-
-Now go to [http://localhost:9000](http://localhost:9000); note that you *must*
-access the `index.html` page you created earlier through the same server that it
-will connect to the browser-repl through due to the JavaScript "same-origin"
-policy.  Doing anything else (such as opening the `index.html` file from disk
-directly) will _not_ work, and will probably result in your ClojureScript/nREPL
-session being hung permanently with no feedback.
-
-Once the browser-repl is connected, we evaluate ClojureScript expressions in the
-browser:
-
-```clojure
-=> (set! (.-value (goog.dom/getElement "afield")) "it works!")
-"it works!"
-=> (.-value (goog.dom/getElement "afield"))
-"it works!"
-```
-
-…and so on.
-
-(Huge thanks to [Nelson Morris](http://twitter.com/xeqixeqi) for doing the
-initial experimentation with Piggieback + browser-repl, and for helping me
-puzzle out all sorts of ClojureScript difficulty I had along the way.)
-
-## Compatibility notes
-
-**Note that Piggieback (and all other ClojureScript REPLs, for that matter)
-is incompatible with [ac-nrepl](https://github.com/clojure-emacs/ac-nrepl).**
-ac-nrepl implements its code completion backend by evaluating Clojure-specific
-expressions to interrogate the runtime.  When you have a ClojureScript REPL
-hooked up via Piggieback, these expressions end up pelting the ClojureScript
-compiler, which doesn't appreciate it (as you might imagine).  The result can
-be odd "hangs" of the REPL, information-free `StackOverflow` exceptions, and
-other ills.
+[Nelson Morris](http://twitter.com/xeqixeqi) was instrumental in the initial
+development of piggieback.
 
 ## Need Help?
 
