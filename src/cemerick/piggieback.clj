@@ -189,8 +189,10 @@
   (if-not (.. code trim (endsWith ":cljs/quit"))
     (apply run-cljs-repl msg code
       (map @session [#'*cljs-repl-env* #'*cljs-compiler-env* #'*cljs-repl-options*]))
-    (do
-      (cljs.repl/-tear-down (.-repl-env (@session #'*cljs-repl-env*)))
+    (let [actual-repl-env (.-repl-env ^DelegatingREPLEnv (@session #'*cljs-repl-env*))]
+      (if (rhino-repl-env? actual-repl-env)
+        (with-rhino-context (cljs.repl/-tear-down actual-repl-env))
+        (cljs.repl/-tear-down actual-repl-env))
       (swap! session assoc
         #'*ns* (@session #'*original-clj-ns*)
         #'*cljs-repl-env* nil
