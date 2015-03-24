@@ -147,7 +147,7 @@
   ; environment after each eval
   (try
     (let [repl-env (DelegatingREPLEnv. repl-env nil)
-          compiler-env (env/default-compiler-env options)]
+          compiler-env (env/default-compiler-env (cljs.closure/add-implicit-options options))]
       (run-cljs-repl (assoc *msg* :squelch-result true)
         (nrepl/code (ns cljs.user
                       (:require [cljs.repl :refer-macros (source doc find-doc
