@@ -190,7 +190,7 @@
     (apply run-cljs-repl msg code
       (map @session [#'*cljs-repl-env* #'*cljs-compiler-env* #'*cljs-repl-options*]))
     (do
-      (cljs.repl/-tear-down (@session #'*cljs-repl-env*))
+      (cljs.repl/-tear-down (.-repl-env (@session #'*cljs-repl-env*)))
       (swap! session assoc
         #'*ns* (@session #'*original-clj-ns*)
         #'*cljs-repl-env* nil
