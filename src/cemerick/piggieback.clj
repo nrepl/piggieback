@@ -5,7 +5,7 @@
             (clojure.tools.nrepl [transport :as transport]
                                  [misc :refer (response-for returning)]
                                  [middleware :refer (set-descriptor!)])
-            [clojure.tools.nrepl.middleware.interruptible-eval :refer (*msg*)]
+            [clojure.tools.nrepl.middleware.interruptible-eval :as ieval]
             cljs.repl
             [cljs.env :as env]
             [cljs.analyzer :as ana]
@@ -15,8 +15,6 @@
            java.io.StringReader
            java.io.Writer)
   (:refer-clojure :exclude (load-file)))
-
-(set! *warn-on-reflection* true)
 
 ; this is the var that is checked by the middleware to determine whether an
 ; active CLJS REPL is in flight
@@ -156,7 +154,7 @@
   (try
     (let [repl-env (DelegatingREPLEnv. repl-env nil)
           compiler-env (env/default-compiler-env (cljs.closure/add-implicit-options options))]
-      (run-cljs-repl (assoc *msg* :squelch-result true)
+      (run-cljs-repl (assoc ieval/*msg* :squelch-result true)
         (nrepl/code (ns cljs.user
                       (:require [cljs.repl :refer-macros (source doc find-doc
                                                            apropos dir pst)])))
@@ -170,6 +168,18 @@
     (catch Exception e
       (set! *cljs-repl-env* nil)
       (throw e))))
+
+;; mostly a copy/paste from interruptible-eval
+(defn- enqueue [{:keys [session transport] :as msg} func]
+  (#'ieval/queue-eval session @@#'ieval/default-executor
+    (fn []
+      (alter-meta! session assoc
+        :thread (Thread/currentThread)
+        :eval-msg msg)
+      (binding [ieval/*msg* msg]
+        (func)
+        (transport/send transport (response-for msg :status :done))
+        (alter-meta! session dissoc :thread :eval-msg)))))
 
 (defn- evaluate [{:keys [session transport ^String code] :as msg}]
   ; we append a :cljs/quit to every chunk of code evaluated so we can break out of cljs.repl/repl*'s loop,
@@ -187,20 +197,18 @@
         #'ana/*cljs-ns* 'cljs.user)
       (transport/send transport (response-for msg
                                   :value "nil"
-                                  :ns (str (@session #'*original-clj-ns*))))))
-
-  (transport/send transport (response-for msg :status :done)))
+                                  :ns (str (@session #'*original-clj-ns*)))))))
 
 (defn- load-file [{:keys [session transport file file-name] :as msg}]
   (cljs.env/with-compiler-env (@session #'*cljs-compiler-env*)
     (binding [ana/*cljs-ns* (@session #'ana/*cljs-ns*)]
-      (cljs.repl/load-stream (@session #'*cljs-repl-env*) file-name (StringReader. file))))
-  (transport/send transport (response-for msg :status :done)))
+      (cljs.repl/load-stream (@session #'*cljs-repl-env*) file-name (StringReader. file)))))
 
 (defn wrap-cljs-repl [handler]
   (fn [{:keys [session op] :as msg}]
-    (let [handler (or (and (@session #'*cljs-repl-env*)
-                        ({"eval" #'evaluate "load-file" #'load-file} op))
+    (let [handler (or (when-let [f (and (@session #'*cljs-repl-env*)
+                                     ({"eval" #'evaluate "load-file" #'load-file} op))]
+                        (fn [msg] (enqueue msg #(f msg))))
                     handler)]
       ; ensure that bindings exist so cljs-repl can set!
       (when-not (contains? @session #'*cljs-repl-env*)
@@ -213,5 +221,5 @@
 
 (set-descriptor! #'wrap-cljs-repl
   {:requires #{"clone"}
-   :expects #{"load-file" "eval"}
+   :expects #{}
    :handles {}})
