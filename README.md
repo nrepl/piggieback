@@ -36,7 +36,7 @@ Piggieback is available in Maven Central. Add this `:dependency` to your
 Leiningen `project.clj`:
 
 ```clojure
-[com.cemerick/piggieback "0.1.5"]
+[com.cemerick/piggieback "0.2.0-SNAPSHOT"]
 ```
 
 Or, add this to your Maven project's `pom.xml`:
@@ -45,12 +45,12 @@ Or, add this to your Maven project's `pom.xml`:
 <dependency>
   <groupId>com.cemerick</groupId>
   <artifactId>piggieback</artifactId>
-  <version>0.1.5</version>
+  <version>0.2.0-SNAPSHOT</version>
 </dependency>
 ```
 
-Piggieback is compatible with Clojure 1.5.1+, and _requires_ ClojureScript
-`0.0-2665` or later.
+Piggieback is compatible with Clojure 1.6.0+, and _requires_ ClojureScript
+`0.0-3148` or later.
 
 Refer to ["Compatibility Notes"](#compatibility-notes) to see if your preferred
 environment has known issues with Piggieback.
@@ -103,29 +103,13 @@ ClojureScript REPL from any nREPL-capable client (e.g.
 [Counterclockwise](http://code.google.com/p/counterclockwise/),
 [nrepl.el](https://github.com/kingtim/nrepl.el), and so on).
 
-### Rhino ClojureScript Environment (default)
+### At the REPL
 
-So, with Leiningen, and using the Rhino ClojureScript environment (the default
-that you get when you e.g. run the `script/repljs` script in the ClojureScript
-source tree, or follow the ['Quick Start' ClojureScript
-tutorial](https://github.com/clojure/clojurescript/wiki/Quick-Start)):
-
-```clojure
+```
 la-mer:piggieback chas$ lein2 repl
-nREPL server started on port 56393
-REPL-y 0.1.0-beta10
-Clojure 1.4.0
-    Exit: Control+D or (exit) or (quit)
-Commands: (user/help)
-    Docs: (doc function-name-here)
-          (find-doc "part-of-name-here")
-  Source: (source function-name-here)
-          (user/sourcery function-name-here)
- Javadoc: (javadoc java-object-or-class-here)
-Examples from clojuredocs.org: [clojuredocs or cdoc]
-          (user/clojuredocs name-here)
-          (user/clojuredocs "ns-here" "name-here")
-user=> (cemerick.piggieback/cljs-repl)
+....
+user=> (require 'cljs.repl.nashorn)
+user=> (cemerick.piggieback/cljs-repl (cljs.repl.nashorn/repl-env))
 Type `:cljs/quit` to stop the ClojureScript REPL
 nil
 cljs.user=> (+ 1 1)
@@ -178,28 +162,6 @@ cljs.user=> (<3 "nREPL still" "ClojureScript")
 
 (The ugly `ThreadDeath` exception will be eliminated eventually.)
 
-### Node.js REPL
-
-A Node.js REPL environment implementation is included in ClojureScript startingn
-with version 2665. You can use this via nREPL and Piggieback, too:
-
-```
-user=> (require '[cljs.repl :as repl])
-nil
-user=> (require '[cljs.repl.node :as node])
-nil
-user=> (cemerick.piggieback/cljs-repl
-         :repl-env (node/repl-env)
-         :output-dir ".cljs_node_repl"
-         :cache-analysis true
-         :source-map true)
-ClojureScript Node.js REPL server listening on 54718
-Type `:cljs/quit` to stop the ClojureScript REPL
-nil
-cljs.user=> (.-version js/process)
-"v0.10.25"
-```
-
 ### Browser REPL
 
 Piggieback can be used with other ClojureScript REPL environments as well, such
@@ -247,7 +209,7 @@ browser-repl environment instead of the Rhino default:
 (require 'cljs.repl.browser)
 
 (cemerick.piggieback/cljs-repl
-  :repl-env (cljs.repl.browser/repl-env :port 9000))
+  (cljs.repl.browser/repl-env :port 9000))
 ```
 
 Now go to [http://localhost:9000](http://localhost:9000); note that you *must*
@@ -293,6 +255,6 @@ have questions or would like to contribute patches.
 
 ## License
 
-Copyright © 2012-2013 Chas Emerick and other contributors.
+Copyright © 2012-2015 Chas Emerick and other contributors.
 
 Distributed under the Eclipse Public License, the same as Clojure.
