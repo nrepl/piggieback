@@ -16,6 +16,8 @@
            java.io.Writer)
   (:refer-clojure :exclude (load-file)))
 
+(set! *warn-on-reflection* true)
+
 ; this is the var that is checked by the middleware to determine whether an
 ; active CLJS REPL is in flight
 (def ^:private ^:dynamic *cljs-repl-env* nil)
@@ -106,14 +108,17 @@
   (equiv [_ other] false))
 
 (defn- run-cljs-repl [{:keys [session transport ns squelch-result] :as nrepl-msg}
-                      code repl-env compiler-env options]
-  (let [initns (if ns (symbol ns) (@session #'ana/*cljs-ns*))]
+                       code repl-env compiler-env options]
+  (let [initns (if ns (symbol ns) (@session #'ana/*cljs-ns*))
+        repl (if (rhino-repl-env? (.-repl-env ^DelegatingREPLEnv repl-env))
+               #(with-rhino-context (apply cljs.repl/repl* %&))
+               cljs.repl/repl*)]
     ;; do we care about line numbers in the REPL?
     (binding [*in* (-> (str code " :cljs/quit") StringReader. LineNumberingPushbackReader.)
               *out* (@session #'*out*)
               *err* (@session #'*err*)
               ana/*cljs-ns* initns]
-      (cljs.repl/repl* repl-env
+      (repl repl-env
         {:need-prompt (constantly false)
          :init (fn [])
          :prompt (fn [])
@@ -167,11 +172,8 @@
   ; we append a :cljs/quit to every chunk of code evaluated so we can break out of cljs.repl/repl*'s loop,
   ; so we need to go a gnarly little stringy check here to catch any actual user-supplied exit
   (if-not (.. code trim (endsWith ":cljs/quit"))
-    (let [run #(apply run-cljs-repl msg code
-                 (map @session [#'*cljs-repl-env* #'*cljs-compiler-env* #'*cljs-repl-options*]))]
-      (if (rhino-repl-env? (.-repl-env (@session #'*cljs-repl-env*)))
-        (with-rhino-context (run))
-        (run)))
+    (apply run-cljs-repl msg code
+      (map @session [#'*cljs-repl-env* #'*cljs-compiler-env* #'*cljs-repl-options*]))
     (do
       (cljs.repl/-tear-down (@session #'*cljs-repl-env*))
       (swap! session assoc
@@ -187,12 +189,9 @@
   (transport/send transport (response-for msg :status :done)))
 
 (defn- load-file [{:keys [session transport file file-name] :as msg}]
-  (let [run #(cljs.env/with-compiler-env (@session #'*cljs-compiler-env*)
-               (binding [ana/*cljs-ns* (@session #'ana/*cljs-ns*)]
-                 (cljs.repl/load-stream (@session #'*cljs-repl-env*) file-name (StringReader. file))))]
-    (if (rhino-repl-env? (.-repl-env (@session #'*cljs-repl-env*)))
-      (with-rhino-context (run))
-      (run)))
+  (cljs.env/with-compiler-env (@session #'*cljs-compiler-env*)
+    (binding [ana/*cljs-ns* (@session #'ana/*cljs-ns*)]
+      (cljs.repl/load-stream (@session #'*cljs-repl-env*) file-name (StringReader. file))))
   (transport/send transport (response-for msg :status :done)))
 
 (defn wrap-cljs-repl [handler]
