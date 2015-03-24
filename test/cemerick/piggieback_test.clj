@@ -57,6 +57,12 @@
   (doall (nrepl/message *session* {:op "eval" :code "(defn x [] (into [] (js/Array 1 2 3)))"}))
   (is (= [1 2 3] (->> {:op "eval" :code "(x)"} (nrepl/message *session*) nrepl/response-values first))))
 
+(deftest printing-works
+  (is (= {:value ["nil"] :out "[1 2 3 4]\n"}
+        (-> (nrepl/message *session* {:op "eval" :code "(println [1 2 3 4])"})
+          nrepl/combine-responses
+          (select-keys [:value :out])))))
+
 (deftest proper-ns-tracking
   (is (= "cljs.user" (-> (nrepl/message *session* {:op "eval" :code "5"})
                        nrepl/combine-responses

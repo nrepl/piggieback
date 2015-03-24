@@ -112,7 +112,10 @@
   (let [initns (if ns (symbol ns) (@session #'ana/*cljs-ns*))
         repl (if (rhino-repl-env? (.-repl-env ^DelegatingREPLEnv repl-env))
                #(with-rhino-context (apply cljs.repl/repl* %&))
-               cljs.repl/repl*)]
+               cljs.repl/repl*)
+        flush (fn []
+                (.flush ^Writer (@session #'*out*))
+                (.flush ^Writer (@session #'*err*)))]
     ;; do we care about line numbers in the REPL?
     (binding [*in* (-> (str code " :cljs/quit") StringReader. LineNumberingPushbackReader.)
               *out* (@session #'*out*)
@@ -125,10 +128,10 @@
          :bind-err false
          :quit-prompt (fn [])
          :compiler-env compiler-env
-         :flush (fn []
-                  (.flush ^Writer (@session #'*out*))
-                  (.flush ^Writer (@session #'*err*)))
+         :flush flush
          :print (fn [result]
+                  ; make sure that all *printed* output is flushed before sending results of evaluation
+                  (flush)
                   (when (or (not ns)
                           (not= initns ana/*cljs-ns*))
                     (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
