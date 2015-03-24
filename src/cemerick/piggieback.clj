@@ -154,6 +154,7 @@
   (try
     (let [repl-env (DelegatingREPLEnv. repl-env nil)
           compiler-env (env/default-compiler-env (cljs.closure/add-implicit-options options))]
+      (set! ana/*cljs-ns* 'cljs.user)
       (run-cljs-repl (assoc ieval/*msg* :squelch-result true)
         (nrepl/code (ns cljs.user
                       (:require [cljs.repl :refer-macros (source doc find-doc
@@ -162,6 +163,7 @@
       (set! *cljs-repl-env* repl-env)
       (set! *cljs-compiler-env* compiler-env)
       (set! *cljs-repl-options* options)
+      ; interruptible-eval is in charge of emitting the final :ns response in this context
       (set! *original-clj-ns* *ns*)
       (set! *ns* (find-ns ana/*cljs-ns*))
       (println "To quit, type:" :cljs/quit))
@@ -221,5 +223,8 @@
 
 (set-descriptor! #'wrap-cljs-repl
   {:requires #{"clone"}
-   :expects #{}
+   ;; not happy about this, but we need to make sure that the readable values
+   ;; we're (hopefully) emitting aren't pr-str'd again by the default
+   ;; :value-transforming middleware
+   :expects #{#'clojure.tools.nrepl.middleware.pr-values/pr-values}
    :handles {}})
