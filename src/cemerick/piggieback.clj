@@ -134,8 +134,11 @@
                           (not= initns ana/*cljs-ns*))
                     (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
                   (when-not squelch-result
+                    ; if the CLJS evaluated result is nil, then we can assume
+                    ; what was evaluated was a cljs.repl special fn (e.g. in-ns,
+                    ; require, etc)
                     (transport/send transport (response-for nrepl-msg
-                                                {:value result
+                                                {:value (or result "nil")
                                                  :ns (@session #'ana/*cljs-ns*)}))))
          :caught (fn [err repl-env repl-options]
                    (let [root-ex (#'clojure.main/root-cause err)]

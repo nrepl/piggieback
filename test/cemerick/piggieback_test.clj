@@ -77,7 +77,7 @@
                        :value)))
   
   ;; TODO emit a response message to in-ns, doesn't seem to hit eval....
-  #_(is (= "cljs.user" (-> (nrepl/message *session* {:op "eval" :code "(in-ns cljs.user)"})
+  (is (= "cljs.user" (-> (nrepl/message *session* {:op "eval" :code "(in-ns 'cljs.user)"})
                        nrepl/combine-responses
                        :ns)))
   (is (= "cljs.user" (-> (nrepl/message *session* {:op "eval" :code "(ns cljs.user)"})
