@@ -105,7 +105,7 @@
   ; pretty meaningless; most REPL envs are records for the assoc'ing, but they're not values
   (equiv [_ other] false))
 
-(defn- run-cljs-repl [{:keys [session transport ns squelch-result] :as nrepl-msg}
+(defn- run-cljs-repl [{:keys [session transport ns] :as nrepl-msg}
                        code repl-env compiler-env options]
   (let [initns (if ns (symbol ns) (@session #'ana/*cljs-ns*))
         repl (if (rhino-repl-env? (.-repl-env ^DelegatingREPLEnv repl-env))
@@ -133,7 +133,8 @@
                   (when (or (not ns)
                           (not= initns ana/*cljs-ns*))
                     (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
-                  (when-not squelch-result
+                  (if (::init nrepl-msg)
+                    (set! *cljs-compiler-env* env/*compiler*)
                     ; if the CLJS evaluated result is nil, then we can assume
                     ; what was evaluated was a cljs.repl special fn (e.g. in-ns,
                     ; require, etc)
@@ -155,16 +156,16 @@
   ; TODO I think we need a var to set! the compiler environment from the REPL
   ; environment after each eval
   (try
-    (let [repl-env (DelegatingREPLEnv. repl-env nil)
-          compiler-env (env/default-compiler-env (cljs.closure/add-implicit-options options))]
+    (let [repl-env (DelegatingREPLEnv. repl-env nil)]
       (set! ana/*cljs-ns* 'cljs.user)
-      (run-cljs-repl (assoc ieval/*msg* :squelch-result true)
+      ; this will implicitly set! *cljs-compiler-env*
+      (run-cljs-repl (assoc ieval/*msg* ::init true)
         (nrepl/code (ns cljs.user
                       (:require [cljs.repl :refer-macros (source doc find-doc
                                                            apropos dir pst)])))
-        repl-env compiler-env options)
+        repl-env nil options)
+      ; (clojure.pprint/pprint (:options @*cljs-compiler-env*))
       (set! *cljs-repl-env* repl-env)
-      (set! *cljs-compiler-env* compiler-env)
       (set! *cljs-repl-options* options)
       ; interruptible-eval is in charge of emitting the final :ns response in this context
       (set! *original-clj-ns* *ns*)
