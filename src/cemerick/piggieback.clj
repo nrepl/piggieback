@@ -106,7 +106,7 @@
   (equiv [_ other] false))
 
 (defn- run-cljs-repl [{:keys [session transport ns] :as nrepl-msg}
-                       code repl-env compiler-env options]
+                      code repl-env compiler-env options]
   (let [initns (if ns (symbol ns) (@session #'ana/*cljs-ns*))
         repl (if (rhino-repl-env? (.-repl-env ^DelegatingREPLEnv repl-env))
                #(with-rhino-context (apply cljs.repl/repl* %&))
@@ -120,34 +120,36 @@
               *err* (@session #'*err*)
               ana/*cljs-ns* initns]
       (repl repl-env
-        {:need-prompt (constantly false)
-         :init (fn [])
-         :prompt (fn [])
-         :bind-err false
-         :quit-prompt (fn [])
-         :compiler-env compiler-env
-         :flush flush
-         :print (fn [result]
-                  ; make sure that all *printed* output is flushed before sending results of evaluation
-                  (flush)
-                  (when (or (not ns)
-                          (not= initns ana/*cljs-ns*))
-                    (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
-                  (if (::init nrepl-msg)
-                    (set! *cljs-compiler-env* env/*compiler*)
-                    ; if the CLJS evaluated result is nil, then we can assume
-                    ; what was evaluated was a cljs.repl special fn (e.g. in-ns,
-                    ; require, etc)
-                    (transport/send transport (response-for nrepl-msg
-                                                {:value (or result "nil")
-                                                 :ns (@session #'ana/*cljs-ns*)}))))
-         :caught (fn [err repl-env repl-options]
-                   (let [root-ex (#'clojure.main/root-cause err)]
-                     (when-not (instance? ThreadDeath root-ex)
-                       (transport/send transport (response-for nrepl-msg {:status :eval-error
-                                                                          :ex (-> err class str)
-                                                                          :root-ex (-> root-ex class str)}))
-                       (cljs.repl/repl-caught err repl-env repl-options))))}))))
+        (merge
+          {:need-prompt (constantly false)
+           :init (fn [])
+           :prompt (fn [])
+           :bind-err false
+           :quit-prompt (fn [])
+           :compiler-env compiler-env
+           :flush flush
+           :print (fn [result]
+                    ; make sure that all *printed* output is flushed before sending results of evaluation
+                    (flush)
+                    (when (or (not ns)
+                            (not= initns ana/*cljs-ns*))
+                      (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
+                    (if (::init nrepl-msg)
+                      (set! *cljs-compiler-env* env/*compiler*)
+                      ; if the CLJS evaluated result is nil, then we can assume
+                      ; what was evaluated was a cljs.repl special fn (e.g. in-ns,
+                      ; require, etc)
+                      (transport/send transport (response-for nrepl-msg
+                                                  {:value (or result "nil")
+                                                   :ns (@session #'ana/*cljs-ns*)}))))
+           :caught (fn [err repl-env repl-options]
+                     (let [root-ex (#'clojure.main/root-cause err)]
+                       (when-not (instance? ThreadDeath root-ex)
+                         (transport/send transport (response-for nrepl-msg {:status :eval-error
+                                                                            :ex (-> err class str)
+                                                                            :root-ex (-> root-ex class str)}))
+                         (cljs.repl/repl-caught err repl-env repl-options))))}
+          options)))))
 
 (defn cljs-repl
   "Starts a ClojureScript REPL over top an nREPL session.  Accepts
