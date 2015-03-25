@@ -75,40 +75,80 @@
 
 ; ================ end Rhino junk =============
 
-; this to avoid setting up the "real" REPL environment every time we enter
+; delegating REPL environments
+; all this to avoid setting up the "real" REPL environment every time we enter
 ; cljs.repl/repl*, and to squelch -tear-down entiretly
-(deftype DelegatingREPLEnv [repl-env ^:volatile-mutable setup-return-val]
-  cljs.repl/IReplEnvOptions
-  (-repl-options [_] (cljs.repl/-repl-options repl-env))
-  cljs.repl/IJavaScriptEnv
-  (-setup [this options] 
-    (when (nil? setup-return-val)
-      (set! setup-return-val (atom (if (rhino-repl-env? repl-env)
-                                     (setup-rhino-env repl-env options)
-                                     (cljs.repl/-setup repl-env options)))))
-    @setup-return-val)
-  (-evaluate [this a b c] (cljs.repl/-evaluate repl-env a b c))
-  (-load [this ns url] (cljs.repl/-load repl-env ns url))
-  (-tear-down [_])
-  clojure.lang.ILookup
-  (valAt [_ k] (get repl-env k))
-  (valAt [_ k default] (get repl-env k default))
-  clojure.lang.Seqable
-  (seq [_] (seq repl-env))
-  clojure.lang.Associative
-  (containsKey [_ k] (contains? repl-env k))
-  (entryAt [_ k] (find repl-env k))
-  (assoc [_ k v] (DelegatingREPLEnv. (assoc repl-env k v) setup-return-val))
-  clojure.lang.IPersistentCollection
-  (count [_] (count repl-env))
-  (cons [_ entry] (conj repl-env entry))
-  ; pretty meaningless; most REPL envs are records for the assoc'ing, but they're not values
-  (equiv [_ other] false))
+
+; we need a delegating REPL environment type for each concrete REPL environment
+; type we see, so that the various `satisfies?` calls that `cljs.repl` makes on
+; our delegating type are true to what is actually supported
+(def ^:private cljs-repl-protocol-impls
+  {cljs.repl/IReplEnvOptions
+   {:-repl-options (fn [repl-env] (cljs.repl/-repl-options (.-repl-env repl-env)))}
+   cljs.repl/IParseError
+   {:-parse-error (fn [repl-env err build-options]
+                    (cljs.repl/-parse-error (.-repl-env repl-env) err build-options))}
+   cljs.repl/IGetError
+   {:-get-error (fn [repl-env name env build-options]
+                  (cljs.repl/-get-error (.-repl-env repl-env) name env build-options))}
+   cljs.repl/IParseStacktrace
+   {:-parse-stacktrace (fn [repl-env stacktrace err build-options]
+                         (cljs.repl/-parse-stacktrace (.-repl-env repl-env) stacktrace err build-options))}
+   cljs.repl/IPrintStacktrace
+   {:-print-stacktrace (fn [repl-env stacktrace err build-options]
+                         (cljs.repl/-print-stacktrace (.-repl-env repl-env) stacktrace err build-options))}})
+; type -> ctor-fn
+(def ^:private repl-env-ctors (atom {}))
+
+(defn- generate-delegating-repl-env [repl-env]
+  (let [repl-env-class (class repl-env)
+        classname (.replace (.getName repl-env-class) \. \_)
+        dclassname (str "Delegating" classname)]
+    (eval
+      (list* 'deftype (symbol dclassname)
+        '([repl-env ^:volatile-mutable setup-return-val]
+           cljs.repl/IJavaScriptEnv
+           (-setup [this options] 
+             (when (nil? setup-return-val)
+               (set! setup-return-val (atom (if (#'cemerick.piggieback/rhino-repl-env? repl-env)
+                                              (#'cemerick.piggieback/setup-rhino-env repl-env options)
+                                              (cljs.repl/-setup repl-env options)))))
+             @setup-return-val)
+           (-evaluate [this a b c] (cljs.repl/-evaluate repl-env a b c))
+           (-load [this ns url] (cljs.repl/-load repl-env ns url))
+           (-tear-down [_])
+           clojure.lang.ILookup
+           (valAt [_ k] (get repl-env k))
+           (valAt [_ k default] (get repl-env k default))
+           clojure.lang.Seqable
+           (seq [_] (seq repl-env))
+           clojure.lang.Associative
+           (containsKey [_ k] (contains? repl-env k))
+           (entryAt [_ k] (find repl-env k))
+           (assoc [_ k v] (#'cemerick.piggieback/delegating-repl-env (assoc repl-env k v) setup-return-val))
+           clojure.lang.IPersistentCollection
+           (count [_] (count repl-env))
+           (cons [_ entry] (conj repl-env entry))
+           ; pretty meaningless; most REPL envs are records for the assoc'ing, but they're not values
+           (equiv [_ other] false))))
+    (let [dclass (resolve (symbol dclassname))
+          ctor (resolve (symbol (str "->" dclassname)))]
+      (doseq [[protocol fn-map] cljs-repl-protocol-impls]
+        (when (satisfies? protocol repl-env)
+          (extend dclass protocol fn-map)))
+      @ctor)))
+
+(defn- delegating-repl-env [repl-env setup-return-val]
+  (if-let [ctor (@repl-env-ctors (class repl-env))]
+    (ctor repl-env nil)
+    (let [ctor (generate-delegating-repl-env repl-env)]
+      (swap! repl-env-ctors assoc (class repl-env) ctor)
+      (ctor repl-env nil))))
 
 (defn- run-cljs-repl [{:keys [session transport ns] :as nrepl-msg}
                       code repl-env compiler-env options]
   (let [initns (if ns (symbol ns) (@session #'ana/*cljs-ns*))
-        repl (if (rhino-repl-env? (.-repl-env ^DelegatingREPLEnv repl-env))
+        repl (if (rhino-repl-env? (.-repl-env repl-env))
                #(with-rhino-context (apply cljs.repl/repl* %&))
                cljs.repl/repl*)
         flush (fn []
@@ -128,7 +168,7 @@
            :quit-prompt (fn [])
            :compiler-env compiler-env
            :flush flush
-           :print (fn [result]
+           :print (fn [result & rest]
                     ; make sure that all *printed* output is flushed before sending results of evaluation
                     (flush)
                     (when (or (not ns)
@@ -158,7 +198,7 @@
   ; TODO I think we need a var to set! the compiler environment from the REPL
   ; environment after each eval
   (try
-    (let [repl-env (DelegatingREPLEnv. repl-env nil)]
+    (let [repl-env (delegating-repl-env repl-env nil)]
       (set! ana/*cljs-ns* 'cljs.user)
       ; this will implicitly set! *cljs-compiler-env*
       (run-cljs-repl (assoc ieval/*msg* ::init true)
@@ -195,7 +235,7 @@
   (if-not (.. code trim (endsWith ":cljs/quit"))
     (apply run-cljs-repl msg code
       (map @session [#'*cljs-repl-env* #'*cljs-compiler-env* #'*cljs-repl-options*]))
-    (let [actual-repl-env (.-repl-env ^DelegatingREPLEnv (@session #'*cljs-repl-env*))]
+    (let [actual-repl-env (.-repl-env (@session #'*cljs-repl-env*))]
       (if (rhino-repl-env? actual-repl-env)
         (with-rhino-context (cljs.repl/-tear-down actual-repl-env))
         (cljs.repl/-tear-down actual-repl-env))
