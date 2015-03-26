@@ -43,6 +43,14 @@ Leiningen `project.clj`:
 [com.cemerick/piggieback "0.2.0-SNAPSHOT"]
 ```
 
+You'll also need to add an explicit nREPL dependency to your `:dev` profile, as
+Leiningen will use its default otherwise (even though Piggieback declares its
+nREPL dependency properly):
+
+```clojure
+:profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.10"]]}}
+```
+
 Or, add this to your Maven project's `pom.xml`:
 
 ```xml
@@ -54,7 +62,7 @@ Or, add this to your Maven project's `pom.xml`:
 ```
 
 Piggieback is compatible with Clojure 1.6.0+, and _requires_ ClojureScript
-`0.0-3148` or later and nREPL `0.2.9` or later.
+`0.0-3148` or later and nREPL `0.2.10` or later.
 
 ## Changelog
 
