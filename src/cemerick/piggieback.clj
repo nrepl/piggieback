@@ -193,6 +193,7 @@
                       ; require, etc)
                       (transport/send transport (response-for nrepl-msg
                                                   {:value (or result "nil")
+                                                   :printed-value 1
                                                    :ns (@session #'ana/*cljs-ns*)}))))
            :caught (fn [err repl-env repl-options]
                      (let [root-ex (#'clojure.main/root-cause err)]
@@ -235,7 +236,7 @@
 
 ;; mostly a copy/paste from interruptible-eval
 (defn- enqueue [{:keys [session transport] :as msg} func]
-  (#'ieval/queue-eval session @@#'ieval/default-executor
+  (ieval/queue-eval session @ieval/default-executor
     (fn []
       (alter-meta! session assoc
         :thread (Thread/currentThread)
@@ -267,6 +268,7 @@
         #'ana/*cljs-ns* 'cljs.user)
       (transport/send transport (response-for msg
                                   :value "nil"
+                                  :printed-value 1
                                   :ns (str (@session #'*original-clj-ns*)))))))
 
 (defn- load-file [{:keys [session transport file file-name] :as msg}]
@@ -291,8 +293,6 @@
 
 (set-descriptor! #'wrap-cljs-repl
   {:requires #{"clone"}
-   ;; not happy about this, but we need to make sure that the readable values
-   ;; we're (hopefully) emitting aren't pr-str'd again by the default
-   ;; :value-transforming middleware
-   :expects #{#'clojure.tools.nrepl.middleware.pr-values/pr-values}
+   ; piggieback unconditionally hijacks eval and load-file
+   :expects #{"eval" "load-file"}
    :handles {}})
