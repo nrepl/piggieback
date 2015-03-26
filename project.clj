@@ -6,7 +6,7 @@
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/tools.nrepl "0.2.9"]
-                 [org.clojure/clojurescript "0.0-3149"]]
+                 [org.clojure/clojurescript "0.0-3153"]]
   
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
   

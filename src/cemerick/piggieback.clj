@@ -81,7 +81,10 @@
 
 ; we need a delegating REPL environment type for each concrete REPL environment
 ; type we see, so that the various `satisfies?` calls that `cljs.repl` makes on
-; our delegating type are true to what is actually supported
+; our delegating type are true to what is actually supported; in effect, this is
+; all a single-purpose implementation of ClojureScript's `specify`, just to be
+; able to override the implementations of -setup and -tear-down supplied for
+; each type of REPL environment
 (def ^:private cljs-repl-protocol-impls
   {cljs.repl/IReplEnvOptions
    {:-repl-options (fn [repl-env] (cljs.repl/-repl-options (.-repl-env repl-env)))}
@@ -97,6 +100,7 @@
    cljs.repl/IPrintStacktrace
    {:-print-stacktrace (fn [repl-env stacktrace err build-options]
                          (cljs.repl/-print-stacktrace (.-repl-env repl-env) stacktrace err build-options))}})
+
 ; type -> ctor-fn
 (def ^:private repl-env-ctors (atom {}))
 
@@ -145,6 +149,8 @@
       (swap! repl-env-ctors assoc (class repl-env) ctor)
       (ctor repl-env nil))))
 
+;; actually running the REPLs
+
 (defn- run-cljs-repl [{:keys [session transport ns] :as nrepl-msg}
                       code repl-env compiler-env options]
   (let [initns (if ns (symbol ns) (@session #'ana/*cljs-ns*))
@@ -174,7 +180,13 @@
                     (when (or (not ns)
                             (not= initns ana/*cljs-ns*))
                       (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
-                    (if (::init nrepl-msg)
+                    (if (::first-cljs-repl nrepl-msg)
+                      ; the first run through the cljs REPL is effectively part
+                      ; of setup; loading core, (ns cljs.user ...), etc, should
+                      ; not yield a value. But, we do capture the compiler
+                      ; environment now (instead of attempting to create one to
+                      ; begin with, because we can't reliably replicate what
+                      ; cljs.repl/repl* does in terms of options munging
                       (set! *cljs-compiler-env* env/*compiler*)
                       ; if the CLJS evaluated result is nil, then we can assume
                       ; what was evaluated was a cljs.repl special fn (e.g. in-ns,
@@ -191,6 +203,10 @@
                          (cljs.repl/repl-caught err repl-env repl-options))))}
           options)))))
 
+; This function always executes when the nREPL session is evaluating Clojure,
+; via interruptible-eval, etc. This means our dynamic environment is in place,
+; so set! and simple dereferencing is available. Contrast w/ evaluate and
+; load-file below.
 (defn cljs-repl
   "Starts a ClojureScript REPL over top an nREPL session.  Accepts
    all options usually accepted by e.g. cljs.repl/repl."
@@ -201,7 +217,7 @@
     (let [repl-env (delegating-repl-env repl-env nil)]
       (set! ana/*cljs-ns* 'cljs.user)
       ; this will implicitly set! *cljs-compiler-env*
-      (run-cljs-repl (assoc ieval/*msg* ::init true)
+      (run-cljs-repl (assoc ieval/*msg* ::first-cljs-repl true)
         (nrepl/code (ns cljs.user
                       (:require [cljs.repl :refer-macros (source doc find-doc
                                                            apropos dir pst)])))
@@ -229,6 +245,10 @@
         (transport/send transport (response-for msg :status :done))
         (alter-meta! session dissoc :thread :eval-msg)))))
 
+; only executed within the context of an nREPL session having *cljs-repl-env*
+; bound. Thus, we're not going through interruptible-eval, and the user's
+; Clojure session (dynamic environment) is not in place, so we need to go
+; through the `session` atom to access/update its vars. Same goes for load-file.
 (defn- evaluate [{:keys [session transport ^String code] :as msg}]
   ; we append a :cljs/quit to every chunk of code evaluated so we can break out of cljs.repl/repl*'s loop,
   ; so we need to go a gnarly little stringy check here to catch any actual user-supplied exit
