@@ -3,6 +3,7 @@
 [nREPL](http://github.com/clojure/tools.nrepl) middleware that enables the
 use of a ClojureScript REPL on top of an nREPL session.
 
+<!--
 #### **Wait!**
 
 Are you just getting started with ClojureScript or using ClojureScript
@@ -10,22 +11,22 @@ in a REPL? You should almost certainly be starting with
 [Austin](https://github.com/cemerick/austin); it uses Piggieback, but wraps it
 up with a bunch of helpful utilities, auto-configuration of your `project.clj`,
 and other goodies.
+-->
 
 ## Why?
 
-The default ClojureScript REPL (as described in the ["quick
-start"](https://github.com/clojure/clojurescript/wiki/Quick-Start) tutorial)
-requires/assumes that it is running in a teletype environment; specifically:
+Two reasons:
 
-* that code to be evaluated is provided via `*in*`, and that results are
-  primarily printed to `*out*`
-* that every REPL evaluation is performed in the same thread as that which
-  started the REPL
-
-nREPL does not provide such guarantees, and so starting the default
-ClojureScript REPL in an nREPL session without the benefit of teletype support
-(which exists in e.g. `lein repl`, but not in other, non-terminal Clojure
-tooling) yields errors and/or lost output instead of a usable REPL.
+* The default ClojureScript REPL (as described in the
+["quick start"](https://github.com/clojure/clojurescript/wiki/Quick-Start)
+tutorial) assumes that it is running in a teletype environment. This works fine
+with nREPL tools in that environment (e.g. `lein repl` in `Terminal.app` or
+`gnome-terminal`, etc), but isn't suitable for development environments that
+have richer interaction models (including editors like vim [fireplace] and emacs
+[CIDER] and IDEs like Intellij [Cursive] and Eclipse [Counterclockwise]).
+* Most of the more advanced tool support for Clojure and ClojureScript (code
+  completion, introspection and inspector utilities, refactoring tools, etc) is
+  packaged and delivered as nREPL extensions.
 
 Piggieback provides an alternative ClojureScript REPL entry point
 (`cemerick.piggieback/cljs-repl`) that changes an nREPL session into a
@@ -36,51 +37,29 @@ original state.
 
 ## "Installation"
 
-Piggieback is available in Maven Central. Add this `:dependency` to your
-Leiningen `project.clj`:
-
-```clojure
-[com.cemerick/piggieback "0.2.0-SNAPSHOT"]
-```
-
-You'll also need to add an explicit nREPL dependency to your `:dev` profile, as
-Leiningen will use its default otherwise (even though Piggieback declares its
-nREPL dependency properly):
-
-```clojure
-:profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.10"]]}}
-```
-
-Or, add this to your Maven project's `pom.xml`:
-
-```xml
-<dependency>
-  <groupId>com.cemerick</groupId>
-  <artifactId>piggieback</artifactId>
-  <version>0.2.0-SNAPSHOT</version>
-</dependency>
-```
+These instructions are for Leiningen. Translating them for use in boot should be
+straightforward.
 
 Piggieback is compatible with Clojure 1.6.0+, and _requires_ ClojureScript
-`0.0-3148` or later and nREPL `0.2.10` or later.
+`0.0-3165` or later and nREPL `0.2.10` or later.
 
-## Changelog
-
-Available @
-[CHANGES.md](https://github.com/cemerick/piggieback/blob/master/CHANGES.md).
-
-## Usage
-
-Piggieback is nREPL middleware, so you need to add it to your nREPL server's
-middleware stack.
-
-If you're using Leniningen v2.0+, you can add this to your `project.clj` to
-automagically mix the Piggieback middleware into the stack that `lein repl` will
-use when starting nREPL:
+Modify your `project.clj` to include the following `:dependencies` and
+`:repl-options`:
 
 ```clojure
-:repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
+:profiles {:dev {:dependencies [[com.cemerick/piggieback "0.2.0"]
+                                [org.clojure/tools.nrepl "0.2.10"]]
+                 :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}}}
 ```
+
+The `:repl-options` bit causes `lein repl` to automagically mix the Piggieback
+nREPL middleware into its default stack. (Yes, you need to explicitly declare a
+local nREPL dependency to use piggieback, due to a
+[Leiningen bug](https://github.com/technomancy/leiningen/issues/1771).)
+
+_If you're using Leiningen directly, or as the basis for the REPLs in your local
+development environment (e.g. CIDER, fireplace, counterclockwise, etc), you're
+done._ [Skip to starting a ClojureScript REPL](#usage).
 
 If you're not starting nREPL through Leiningen (e.g. maybe you're starting up
 an nREPL server from within an application), you can achieve the same thing by
@@ -107,43 +86,36 @@ nREPL handler.  Keep two things in mind when doing so:
 * Piggieback depends upon persistent REPL sessions, like those provided by
   `clojure.tools.nrepl.middleware.session/session`.)
 
-With Piggieback added to your nREPL middleware stack, you can start a
-ClojureScript REPL from any nREPL-capable client (e.g.
-[Leiningen](http://leiningen.org),
-[REPL-y](https://github.com/trptcolin/reply/),
-[Counterclockwise](http://code.google.com/p/counterclockwise/),
-[CIDER](https://github.com/clojure-emacs/cider),
-[Cursive](http://cursiveclojure.com/), and so on).
-
-### At the REPL
+## Usage
 
 ```
 $ lein repl
 ....
 user=> (cemerick.piggieback/cljs-repl (cljs.repl.rhino/repl-env))
-Type `:cljs/quit` to stop the ClojureScript REPL
+To quit, type: :cljs/quit
 nil
-cljs.user=> (+ 1 1)
-2
 cljs.user=> (defn <3 [a b] (str a " <3 " b "!"))
 #<
-function _LT_3(a, b) {
+function cljs$user$_LT_3(a, b) {
     return [cljs.core.str(a), cljs.core.str(" <3 "), cljs.core.str(b), cljs.core.str("!")].join("");
 }
 >
-nil
 cljs.user=> (<3 "nREPL" "ClojureScript")
 "nREPL <3 ClojureScript!"
-cljs.user=> 
 ```
 
-Notice that the REPL prompt changed after invoking
+See how the REPL prompt changed after invoking
 `cemerick.piggieback/cljs-repl`? After that point, all expressions sent to the
-REPL are evaluated within the ClojureScript environment.  Of course, you can
-concurrently take advantage of all of nREPL's other facilities, including
-connecting to the server with other clients (so as to easily modify Clojure and
-ClojureScript code in the same JVM), and interrupting hung ClojureScript
-invocations:
+REPL are evaluated within the ClojureScript environment.
+`cemerick.piggieback/cljs-repl`'s passes along all of its options to
+`cljs.repl/repl`, so all of the tutorials and documentation related to it hold
+(including the
+[ClojureScript Quick Start tutorial](https://github.com/clojure/clojurescript/wiki/Quick-Start)).
+
+Of course, you can concurrently take advantage of all of nREPL's other
+facilities, including connecting to the same nREPL server with other clients (so
+as to easily modify Clojure and ClojureScript code via the same JVM), and
+interrupting hung ClojureScript invocations:
 
 ```clojure
 cljs.user=> (iterate inc 0)
@@ -151,22 +123,7 @@ cljs.user=> (iterate inc 0)
 cljs.user=> "Error evaluating:" (iterate inc 0) :as "cljs.core.iterate.call(null,cljs.core.inc,0);\n"
 java.lang.ThreadDeath
         java.lang.Thread.stop(Thread.java:776)
-        clojure.tools.nrepl.middleware.interruptible_eval$interruptible_eval$fn__374.invoke(interruptible_eval.clj:185)
-        cemerick.piggieback$wrap_cljs_repl$fn__2535.invoke(piggieback.clj:171)
-        clojure.tools.nrepl.middleware.pr_values$pr_values$fn__390.invoke(pr_values.clj:17)
-        clojure.tools.nrepl.middleware.session$add_stdin$fn__451.invoke(session.clj:185)
-        clojure.tools.nrepl.middleware.session$session$fn__444.invoke(session.clj:164)
-        clojure.tools.nrepl.server$handle_STAR_.invoke(server.clj:16)
-        clojure.tools.nrepl.server$handle.invoke(server.clj:25)
-        clojure.tools.nrepl.server$accept_connection$fn__458.invoke(server.clj:35)
-        clojure.core$binding_conveyor_fn$fn__3989.invoke(core.clj:1819)
-        clojure.lang.AFn.call(AFn.java:18)
-        java.util.concurrent.FutureTask$Sync.innerRun(FutureTask.java:303)
-        java.util.concurrent.FutureTask.run(FutureTask.java:138)
-        java.util.concurrent.ThreadPoolExecutor$Worker.runTask(ThreadPoolExecutor.java:886)
-        java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:908)
-        java.lang.Thread.run(Thread.java:680)
-InterruptedException   java.util.concurrent.locks.AbstractQueuedSynchronizer.acquireInterruptibly (AbstractQueuedSynchronizer.java:1199)
+		....
 cljs.user=> (<3 "nREPL still" "ClojureScript")
 "nREPL still <3 ClojureScript!"
 ```

@@ -1,4 +1,4 @@
-(defproject com.cemerick/piggieback "0.2.0-SNAPSHOT"
+(defproject com.cemerick/piggieback "0.2.0"
   :description "Adding support for running ClojureScript REPLs over nREPL."
   :url "http://github.com/cemerick/piggieback"
   :license {:name "Eclipse Public License"
@@ -6,7 +6,7 @@
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [org.clojure/tools.nrepl "0.2.10"]
-                 [org.clojure/clojurescript "0.0-3153"]]
+                 [org.clojure/clojurescript "0.0-3165"]]
   
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
   
@@ -15,7 +15,7 @@
 
   :aliases  {"all" ["with-profile" "dev"]}
 
-  ; why do I need to repeat this to get the right rev in `lein repl`? :-/
+  ; painful for users; https://github.com/technomancy/leiningen/issues/1771
   :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.10"]]}}
   
   ;;maven central requirements
