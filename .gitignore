@@ -14,3 +14,7 @@ pom.xml.asc
 .settings
 
 .externalToolBuilders
+.cljs_*
+nashorn*
+.nrepl-port
+

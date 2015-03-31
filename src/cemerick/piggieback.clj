@@ -3,26 +3,31 @@
      cemerick.piggieback
   (:require [clojure.tools.nrepl :as nrepl]
             (clojure.tools.nrepl [transport :as transport]
-                                 [server :as server]
-                                 [misc :refer (returning)]
+                                 [misc :refer (response-for returning)]
                                  [middleware :refer (set-descriptor!)])
-            [clojure.tools.nrepl.middleware.load-file :as load-file]
             [clojure.tools.nrepl.middleware.interruptible-eval :as ieval]
-            [clojure.tools.reader :as reader]
-            [clojure.tools.reader.reader-types :as readers]
+            cljs.repl
             [cljs.env :as env]
-            [cljs.repl :as cljsrepl]
-            [cljs.closure :as cljsc]
             [cljs.analyzer :as ana]
-            [cljs.tagged-literals :as tags]
             [cljs.repl.rhino :as rhino])
   (:import (org.mozilla.javascript Context ScriptableObject)
-           java.io.StringReader))
+           clojure.lang.LineNumberingPushbackReader
+           java.io.StringReader
+           java.io.Writer)
+  (:refer-clojure :exclude (load-file)))
 
+; this is the var that is checked by the middleware to determine whether an
+; active CLJS REPL is in flight
 (def ^:private ^:dynamic *cljs-repl-env* nil)
-(def ^:private ^:dynamic *eval* nil)
+(def ^:private ^:dynamic *cljs-compiler-env* nil)
 (def ^:private ^:dynamic *cljs-repl-options* nil)
 (def ^:private ^:dynamic *original-clj-ns* nil)
+
+; ================ Rhino junk =================
+
+(defn- rhino-repl-env?
+  [repl-env]
+  (instance? cljs.repl.rhino.RhinoEnv repl-env))
 
 (defmacro ^:private squelch-rhino-context-error
   "Catches and silences the exception thrown by (Context/exit)
@@ -31,7 +36,7 @@
    a corresponding Context/exit; it assumes:
 
    (a) the context will only ever be used on one thread
-   (b) cljsrepl/repl will clean up the context when the
+   (b) cljs.repl/repl will clean up the context when the
        command-line cljs repl exits"
   [& body]
   `(try
@@ -57,229 +62,237 @@
     "out"
     (Context/javaToJS out (:scope rhino-env))))
 
-(defn ^{:deprecated true} rhino-repl-env
-  "Returns a new Rhino ClojureScript REPL environment. This function is
-  deprecated, and simply delegates to `cljs.repl.rhino/repl-env`."
-  []
-  (assoc (rhino/repl-env)
-    ::env/compiler (env/default-compiler-env)))
-
-(defn- reset-repl-state
-  []
-  (set! *cljs-repl-env* nil)
-  (set! *eval* nil)
-  (set! ana/*cljs-ns* 'cljs.user)
-  (set! *ns* *original-clj-ns*)
-  (set! *original-clj-ns* nil))
-
-(defn- quit-cljs-repl
-  []
-  (squelch-rhino-context-error
-    (cljsrepl/-tear-down *cljs-repl-env*))
-  (reset-repl-state))
-
-(defn cljs-eval
-  "Evaluates the expression [expr] (should already be read) using the
-   given ClojureScript REPL environment [repl-env] and a map of
-   ClojureScript REPL options: :verbose, :warn-on-undeclared, and
-   :special-fns, each with the same acceptable values and semantics as
-   the \"regular\" ClojureScript REPL.
-
-   This is generally not going to be used by end users; rather,
-   as the basis of alternative (usually not-Rhino, e.g. node/V8)
-   `eval` functions passed to `cljs-repl`."
-  [repl-options repl-env expr {:keys [verbose warn-on-undeclared special-fns]}]
-  (env/with-compiler-env
-    (or (::env/compiler repl-env) (env/default-compiler-env))
-    (let [explicit-ns (when (:ns ieval/*msg*) (symbol (:ns ieval/*msg*)))
-          ; need to let *cljs-ns* escape from the binding scope below iff it differs
-          ; from any explicitly-specified :ns in the request msg
-          escaping-ns (atom ana/*cljs-ns*)]
-      (returning
-       (with-bindings (merge {#'cljsrepl/*cljs-verbose* verbose
-                              #'ana/*cljs-warnings* (assoc ana/*cljs-warnings*
-                                                      :undeclared warn-on-undeclared)}
-                             (when explicit-ns {#'ana/*cljs-ns* explicit-ns}))
-         (let [special-fns (merge cljsrepl/default-special-fns special-fns)
-               set-ns! #(when (not= explicit-ns ana/*cljs-ns*)
-                          (reset! escaping-ns ana/*cljs-ns*))]
-           (cond
-            (= expr :cljs/quit) (do (quit-cljs-repl) :cljs/quit)
-
-            (and (seq? expr) (find special-fns (first expr)))
-            (do
-              (returning
-               ((get special-fns (first expr)) repl-env {:context :expr :locals {}} expr repl-options)
-               (set-ns!)))
-
-            :default
-            (let [ret (cljsrepl/evaluate-form repl-env
-                                              {:context :statement :locals {}
-                                               :ns (ana/get-namespace ana/*cljs-ns*)}
-                                              "<cljs repl>"
-                                              expr
-                                              (#'cljsrepl/wrap-fn expr))]
-              (set-ns!)
-              (try
-                (read-string ret)
-                (catch Exception _
-                  (when (string? ret)
-                    (println ret))))))))
-       (when *original-clj-ns*
-         (set! ana/*cljs-ns* @escaping-ns)
-         (set! *ns* (create-ns @escaping-ns)))))))
-
-(defn- wrap-exprs
-  [& exprs]
-  (for [expr exprs]
-    `(#'*eval* @#'*cljs-repl-env*
-               '~expr
-               @#'*cljs-repl-options*)))
-
-(defn- load-file-contents
-  [repl-env code file-path file-name]
-  (binding [ana/*cljs-ns* 'cljs.user]
-    (cljs.repl/load-stream repl-env file-path (java.io.StringReader. code))))
-
-(defn- load-file-code
-  [code file-path file-name]
-  (wrap-exprs (list `load-file-contents code file-path file-name)))
-
-(defn- rhino-repl-env?
-  [repl-env]
-  (instance? cljs.repl.rhino.RhinoEnv repl-env))
-
 (defn- setup-rhino-env
   [rhino-env options]
   (with-rhino-context
-    (doto rhino-env
-      (cljsrepl/-setup options)
+    (let [ret (cljs.repl/-setup rhino-env options)]
       ; rhino/rhino-setup maps System/out to "out" and therefore the target of
       ; cljs' *print-fn*! :-(
-      (map-stdout *out*)
+      (map-stdout rhino-env *out*)
       ; rhino/repl-env calls (Context/enter) without a (Context/exit)
-      (squelch-rhino-context-error
-        (Context/exit)))))
+      (squelch-rhino-context-error (Context/exit))
+      ret)))
 
+; ================ end Rhino junk =============
+
+; delegating REPL environments
+; all this to avoid setting up the "real" REPL environment every time we enter
+; cljs.repl/repl*, and to squelch -tear-down entiretly
+
+; we need a delegating REPL environment type for each concrete REPL environment
+; type we see, so that the various `satisfies?` calls that `cljs.repl` makes on
+; our delegating type are true to what is actually supported; in effect, this is
+; all a single-purpose implementation of ClojureScript's `specify`, just to be
+; able to override the implementations of -setup and -tear-down supplied for
+; each type of REPL environment
+(def ^:private cljs-repl-protocol-impls
+  {cljs.repl/IReplEnvOptions
+   {:-repl-options (fn [repl-env] (cljs.repl/-repl-options (.-repl-env repl-env)))}
+   cljs.repl/IParseError
+   {:-parse-error (fn [repl-env err build-options]
+                    (cljs.repl/-parse-error (.-repl-env repl-env) err build-options))}
+   cljs.repl/IGetError
+   {:-get-error (fn [repl-env name env build-options]
+                  (cljs.repl/-get-error (.-repl-env repl-env) name env build-options))}
+   cljs.repl/IParseStacktrace
+   {:-parse-stacktrace (fn [repl-env stacktrace err build-options]
+                         (cljs.repl/-parse-stacktrace (.-repl-env repl-env) stacktrace err build-options))}
+   cljs.repl/IPrintStacktrace
+   {:-print-stacktrace (fn [repl-env stacktrace err build-options]
+                         (cljs.repl/-print-stacktrace (.-repl-env repl-env) stacktrace err build-options))}})
+
+; type -> ctor-fn
+(def ^:private repl-env-ctors (atom {}))
+
+(defn- generate-delegating-repl-env [repl-env]
+  (let [repl-env-class (class repl-env)
+        classname (.replace (.getName repl-env-class) \. \_)
+        dclassname (str "Delegating" classname)]
+    (eval
+      (list* 'deftype (symbol dclassname)
+        '([repl-env ^:volatile-mutable setup-return-val]
+           cljs.repl/IJavaScriptEnv
+           (-setup [this options] 
+             (when (nil? setup-return-val)
+               (set! setup-return-val (atom (if (#'cemerick.piggieback/rhino-repl-env? repl-env)
+                                              (#'cemerick.piggieback/setup-rhino-env repl-env options)
+                                              (cljs.repl/-setup repl-env options)))))
+             @setup-return-val)
+           (-evaluate [this a b c] (cljs.repl/-evaluate repl-env a b c))
+           (-load [this ns url] (cljs.repl/-load repl-env ns url))
+           (-tear-down [_])
+           clojure.lang.ILookup
+           (valAt [_ k] (get repl-env k))
+           (valAt [_ k default] (get repl-env k default))
+           clojure.lang.Seqable
+           (seq [_] (seq repl-env))
+           clojure.lang.Associative
+           (containsKey [_ k] (contains? repl-env k))
+           (entryAt [_ k] (find repl-env k))
+           (assoc [_ k v] (#'cemerick.piggieback/delegating-repl-env (assoc repl-env k v) setup-return-val))
+           clojure.lang.IPersistentCollection
+           (count [_] (count repl-env))
+           (cons [_ entry] (conj repl-env entry))
+           ; pretty meaningless; most REPL envs are records for the assoc'ing, but they're not values
+           (equiv [_ other] false))))
+    (let [dclass (resolve (symbol dclassname))
+          ctor (resolve (symbol (str "->" dclassname)))]
+      (doseq [[protocol fn-map] cljs-repl-protocol-impls]
+        (when (satisfies? protocol repl-env)
+          (extend dclass protocol fn-map)))
+      @ctor)))
+
+(defn- delegating-repl-env [repl-env setup-return-val]
+  (if-let [ctor (@repl-env-ctors (class repl-env))]
+    (ctor repl-env nil)
+    (let [ctor (generate-delegating-repl-env repl-env)]
+      (swap! repl-env-ctors assoc (class repl-env) ctor)
+      (ctor repl-env nil))))
+
+;; actually running the REPLs
+
+(defn- run-cljs-repl [{:keys [session transport ns] :as nrepl-msg}
+                      code repl-env compiler-env options]
+  (let [initns (if ns (symbol ns) (@session #'ana/*cljs-ns*))
+        repl (if (rhino-repl-env? (.-repl-env repl-env))
+               #(with-rhino-context (apply cljs.repl/repl* %&))
+               cljs.repl/repl*)
+        flush (fn []
+                (.flush ^Writer (@session #'*out*))
+                (.flush ^Writer (@session #'*err*)))]
+    ;; do we care about line numbers in the REPL?
+    (binding [*in* (-> (str code " :cljs/quit") StringReader. LineNumberingPushbackReader.)
+              *out* (@session #'*out*)
+              *err* (@session #'*err*)
+              ana/*cljs-ns* initns]
+      (repl repl-env
+        (merge
+          {:need-prompt (constantly false)
+           :init (fn [])
+           :prompt (fn [])
+           :bind-err false
+           :quit-prompt (fn [])
+           :compiler-env compiler-env
+           :flush flush
+           :print (fn [result & rest]
+                    ; make sure that all *printed* output is flushed before sending results of evaluation
+                    (flush)
+                    (when (or (not ns)
+                            (not= initns ana/*cljs-ns*))
+                      (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
+                    (if (::first-cljs-repl nrepl-msg)
+                      ; the first run through the cljs REPL is effectively part
+                      ; of setup; loading core, (ns cljs.user ...), etc, should
+                      ; not yield a value. But, we do capture the compiler
+                      ; environment now (instead of attempting to create one to
+                      ; begin with, because we can't reliably replicate what
+                      ; cljs.repl/repl* does in terms of options munging
+                      (set! *cljs-compiler-env* env/*compiler*)
+                      ; if the CLJS evaluated result is nil, then we can assume
+                      ; what was evaluated was a cljs.repl special fn (e.g. in-ns,
+                      ; require, etc)
+                      (transport/send transport (response-for nrepl-msg
+                                                  {:value (or result "nil")
+                                                   :printed-value 1
+                                                   :ns (@session #'ana/*cljs-ns*)}))))
+           :caught (fn [err repl-env repl-options]
+                     (let [root-ex (#'clojure.main/root-cause err)]
+                       (when-not (instance? ThreadDeath root-ex)
+                         (transport/send transport (response-for nrepl-msg {:status :eval-error
+                                                                            :ex (-> err class str)
+                                                                            :root-ex (-> root-ex class str)}))
+                         (cljs.repl/repl-caught err repl-env repl-options))))}
+          options)))))
+
+; This function always executes when the nREPL session is evaluating Clojure,
+; via interruptible-eval, etc. This means our dynamic environment is in place,
+; so set! and simple dereferencing is available. Contrast w/ evaluate and
+; load-file below.
 (defn cljs-repl
   "Starts a ClojureScript REPL over top an nREPL session.  Accepts
-   all options usually accepted by e.g. cljs.repl/repl. Also accepts optional
-   configuration via kwargs:
+   all options usually accepted by e.g. cljs.repl/repl."
+  [repl-env & {:as options}]
+  ; TODO I think we need a var to set! the compiler environment from the REPL
+  ; environment after each eval
+  (try
+    (let [repl-env (delegating-repl-env repl-env nil)]
+      (set! ana/*cljs-ns* 'cljs.user)
+      ; this will implicitly set! *cljs-compiler-env*
+      (run-cljs-repl (assoc ieval/*msg* ::first-cljs-repl true)
+        (nrepl/code (ns cljs.user
+                      (:require [cljs.repl :refer-macros (source doc find-doc
+                                                           apropos dir pst)])))
+        repl-env nil options)
+      ; (clojure.pprint/pprint (:options @*cljs-compiler-env*))
+      (set! *cljs-repl-env* repl-env)
+      (set! *cljs-repl-options* options)
+      ; interruptible-eval is in charge of emitting the final :ns response in this context
+      (set! *original-clj-ns* *ns*)
+      (set! *ns* (find-ns ana/*cljs-ns*))
+      (println "To quit, type:" :cljs/quit))
+    (catch Exception e
+      (set! *cljs-repl-env* nil)
+      (throw e))))
 
-     :repl-env - a ClojureScript REPL environment (defaults to a new Rhino
-                 environment [from `rhino-repl-env`])
-     :eval - a function of three arguments
-             ([repl-env expression cljs-repl-options], corresponding to `cljs-eval`)
-             that is called once for each ClojureScript expression to be evaluated."
-  [& {:keys [repl-env eval] :as options}]
-  (let [repl-env (or repl-env (rhino-repl-env))
-        options (-> (merge {:warn-on-undeclared true} options)
-                    (update-in [:special-fns] assoc
-                               `load-file-contents
-                               (fn [repl-env compiler-env load-file-expr repl-options]
-                                 (apply load-file-contents repl-env (rest load-file-expr))))
-                    (dissoc :repl-env :eval))
-        eval (or eval
-                 (when (rhino-repl-env? repl-env)
-                   #(with-rhino-context (apply cljs-eval *cljs-repl-options* %&)))
-                 #(apply cljs-eval *cljs-repl-options* %&))]
+;; mostly a copy/paste from interruptible-eval
+(defn- enqueue [{:keys [session transport] :as msg} func]
+  (ieval/queue-eval session @ieval/default-executor
+    (fn []
+      (alter-meta! session assoc
+        :thread (Thread/currentThread)
+        :eval-msg msg)
+      (binding [ieval/*msg* msg]
+        (func)
+        (transport/send transport (response-for msg :status :done))
+        (alter-meta! session dissoc :thread :eval-msg)))))
 
-    (set! *cljs-repl-options* options)
-    (set! *eval* eval)
-    (set! ana/*cljs-ns* 'cljs.user)
-    (set! *original-clj-ns* *ns*)
+; only executed within the context of an nREPL session having *cljs-repl-env*
+; bound. Thus, we're not going through interruptible-eval, and the user's
+; Clojure session (dynamic environment) is not in place, so we need to go
+; through the `session` atom to access/update its vars. Same goes for load-file.
+(defn- evaluate [{:keys [session transport ^String code] :as msg}]
+  ; we append a :cljs/quit to every chunk of code evaluated so we can break out of cljs.repl/repl*'s loop,
+  ; so we need to go a gnarly little stringy check here to catch any actual user-supplied exit
+  (if-not (.. code trim (endsWith ":cljs/quit"))
+    (apply run-cljs-repl msg code
+      (map @session [#'*cljs-repl-env* #'*cljs-compiler-env* #'*cljs-repl-options*]))
+    (let [actual-repl-env (.-repl-env (@session #'*cljs-repl-env*))]
+      (if (rhino-repl-env? actual-repl-env)
+        (with-rhino-context (cljs.repl/-tear-down actual-repl-env))
+        (cljs.repl/-tear-down actual-repl-env))
+      (swap! session assoc
+        #'*ns* (@session #'*original-clj-ns*)
+        #'*cljs-repl-env* nil
+        #'*cljs-compiler-env* nil
+        #'*cljs-repl-options* nil
+        #'ana/*cljs-ns* 'cljs.user)
+      (transport/send transport (response-for msg
+                                  :value "nil"
+                                  :printed-value 1
+                                  :ns (str (@session #'*original-clj-ns*)))))))
 
-    (let [ups-deps (cljsc/get-upstream-deps)
-          
-          compiler-env (or (::env/compiler repl-env)
-                           (env/default-compiler-env
-                             (assoc options
-                               :ups-libs (:libs ups-deps)
-                               :ups-foreign-libs (:foreign-libs ups-deps))))
-          repl-env (if (::env/compiler repl-env)
-                     ; some repl env implementations (e.g. austin's DelegatingREPLEnv)
-                     ; implement ILookup, but not Associative; don't attempt to
-                     ; assoc if the repl env has a compiler env already
-                     repl-env
-                     (assoc repl-env ::env/compiler compiler-env))]
-      (try
-        (env/with-compiler-env compiler-env
-          (set! *cljs-repl-env* repl-env)
-          (when-let [merge-opts (:merge-opts ((if (rhino-repl-env? repl-env) setup-rhino-env cljsrepl/-setup)
-                                               repl-env
-                                               options))]
-            (set! *cljs-repl-options* (merge *cljs-repl-options* merge-opts))))
-        (catch Exception e
-          (reset-repl-state)
-          (throw e))))
-    (print "Type `")
-    (pr :cljs/quit)
-    (println "` to stop the ClojureScript REPL")))
+(defn- load-file [{:keys [session transport file file-name] :as msg}]
+  (cljs.env/with-compiler-env (@session #'*cljs-compiler-env*)
+    (binding [ana/*cljs-ns* (@session #'ana/*cljs-ns*)]
+      (cljs.repl/load-stream (@session #'*cljs-repl-env*) file-name (StringReader. file)))))
 
-(defn- prep-code
-  [{:keys [code session ns] :as msg}]
-  (let [code (if-not (string? code)
-               code
-               (let [str-reader (StringReader. code)
-                     end (Object.)
-                     ns-sym (or (when ns (symbol ns)) ana/*cljs-ns*)
-                     repl-env (@session #'*cljs-repl-env*)]
-                 (->> #(env/with-compiler-env
-                         (or (::env/compiler repl-env)
-                             (env/default-compiler-env))
-                         (binding [ana/*cljs-ns* ns-sym
-                                   *ns* (create-ns ns-sym)
-                                   reader/*data-readers* tags/*cljs-data-readers*
-                                   reader/*alias-map*
-                                   (apply merge
-                                          ((juxt :requires :require-macros)
-                                           (ana/get-namespace ns-sym)))]
-                           (try
-                             (let [rdr (readers/source-logging-push-back-reader
-                                        (java.io.PushbackReader. str-reader)
-                                        1
-                                        "NO_SOURCE_FILE")]
-                               (reader/read rdr nil end))
-                             (catch Exception e
-                               (binding [*out* (@session #'*err*)]
-                                 (println (.getMessage e))
-                                 ::error)))))
-                      repeatedly
-                      (take-while (complement #{end}))
-                      (remove #{::error}))))]
-    (assoc msg :code (apply wrap-exprs code))))
-
-(defn- cljs-ns-transport
-  [transport]
-  (reify clojure.tools.nrepl.transport.Transport
-    (recv [this] (transport/recv transport))
-    (recv [this timeout] (transport/recv transport timeout))
-    (send [this resp]
-      (let [resp (if (and *cljs-repl-env* (:ns resp))
-                   (assoc resp :ns (str ana/*cljs-ns*))
-                   resp)]
-        (transport/send transport resp)))))
-
-(defn wrap-cljs-repl
-  [h]
-  (fn [{:keys [op session transport] :as msg}]
-    (let [cljs-active? (@session #'*cljs-repl-env*)
-          msg (assoc msg :transport (cljs-ns-transport transport))
-          msg (if (and cljs-active? (= op "eval")) (prep-code msg) msg)]
-      ; ensure that bindings exist so cljs-repl can set! 'em
+(defn wrap-cljs-repl [handler]
+  (fn [{:keys [session op] :as msg}]
+    (let [handler (or (when-let [f (and (@session #'*cljs-repl-env*)
+                                     ({"eval" #'evaluate "load-file" #'load-file} op))]
+                        (fn [msg] (enqueue msg #(f msg))))
+                    handler)]
+      ; ensure that bindings exist so cljs-repl can set!
       (when-not (contains? @session #'*cljs-repl-env*)
         (swap! session (partial merge {#'*cljs-repl-env* *cljs-repl-env*
-                                       #'*eval* *eval*
+                                       #'*cljs-compiler-env* *cljs-compiler-env*
                                        #'*cljs-repl-options* *cljs-repl-options*
-                                       #'ana/*cljs-ns* ana/*cljs-ns*
-                                       #'*original-clj-ns* nil})))
-
-      (with-bindings (if cljs-active?
-                       {#'load-file/load-file-code load-file-code}
-                       {})
-        (h msg)))))
+                                       #'*original-clj-ns* *original-clj-ns*
+                                       #'ana/*cljs-ns* ana/*cljs-ns*})))
+      (handler msg))))
 
 (set-descriptor! #'wrap-cljs-repl
   {:requires #{"clone"}
-   :expects #{"load-file" "eval"}
+   ; piggieback unconditionally hijacks eval and load-file
+   :expects #{"eval" "load-file"}
    :handles {}})

@@ -14,6 +14,20 @@
                                 session
                                 {:op "eval" :code "clojure.core/*ns*"}))))))
 
+(def ^:private jdk8+ (try (import 'java.time.Instant)
+                          true
+                          (catch Exception _ false)))
+
+(def ^:private cljs-repl-start-code
+  (if jdk8+
+    (do (require 'cljs.repl.nashorn)
+        (nrepl/code
+          (cemerick.piggieback/cljs-repl
+            (cljs.repl.rhino/repl-env))))
+    (nrepl/code
+      (cemerick.piggieback/cljs-repl
+        (cljs.repl.rhino/repl-env)))))
+
 (defn repl-server-fixture
   [f]
   (with-open [server (server/start-server
@@ -23,7 +37,7 @@
           session (nrepl/client-session (nrepl/client conn Long/MAX_VALUE))]
       ; need to let the dynamic bindings get in place before trying to eval anything that
       ; depends upon those bingings being set
-      (doall (nrepl/message session {:op "eval" :code "(cemerick.piggieback/cljs-repl)"}))
+      (doall (nrepl/message session {:op "eval" :code cljs-repl-start-code}))
       (try
         (binding [*server-port* port
                   *session* session]
@@ -43,6 +57,12 @@
   (doall (nrepl/message *session* {:op "eval" :code "(defn x [] (into [] (js/Array 1 2 3)))"}))
   (is (= [1 2 3] (->> {:op "eval" :code "(x)"} (nrepl/message *session*) nrepl/response-values first))))
 
+(deftest printing-works
+  (is (= {:value ["nil"] :out "[1 2 3 4]\n"}
+        (-> (nrepl/message *session* {:op "eval" :code "(println [1 2 3 4])"})
+          nrepl/combine-responses
+          (select-keys [:value :out])))))
+
 (deftest proper-ns-tracking
   (is (= "cljs.user" (-> (nrepl/message *session* {:op "eval" :code "5"})
                        nrepl/combine-responses
@@ -57,7 +77,7 @@
                        :value)))
   
   ;; TODO emit a response message to in-ns, doesn't seem to hit eval....
-  #_(is (= "cljs.user" (-> (nrepl/message *session* {:op "eval" :code "(in-ns cljs.user)"})
+  (is (= "cljs.user" (-> (nrepl/message *session* {:op "eval" :code "(in-ns 'cljs.user)"})
                        nrepl/combine-responses
                        :ns)))
   (is (= "cljs.user" (-> (nrepl/message *session* {:op "eval" :code "(ns cljs.user)"})
