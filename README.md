@@ -112,6 +112,18 @@ REPL are evaluated within the ClojureScript environment.
 (including the
 [ClojureScript Quick Start tutorial](https://github.com/clojure/clojurescript/wiki/Quick-Start)).
 
+*Important Notes*
+
+1. When using Piggieback to enable a browser REPL: the ClojureScript compiler
+   defaults to putting compilation output in `out`, which is probably not where
+   your ring app is serving resources from (`resources`,
+   `target/classes/public`, etc). Either configure your ring app to serve
+   resources from `out`, or pass a `cljs-repl` `:output-dir` option so that a
+   reasonable correspondence is established.
+2. The `load-file` nREPL operation will only load the state of files from disk.
+   This is in contrast to "regular" Clojure nREPL operation, where the current
+   state of a file's buffer is loaded without regard to its saved state on disk.
+
 Of course, you can concurrently take advantage of all of nREPL's other
 facilities, including connecting to the same nREPL server with other clients (so
 as to easily modify Clojure and ClojureScript code via the same JVM), and
