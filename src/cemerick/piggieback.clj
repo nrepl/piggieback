@@ -6,6 +6,7 @@
                                  [misc :refer (response-for returning)]
                                  [middleware :refer (set-descriptor!)])
             [clojure.tools.nrepl.middleware.interruptible-eval :as ieval]
+            [clojure.java.io :as io]
             cljs.repl
             [cljs.env :as env]
             [cljs.analyzer :as ana]
@@ -271,10 +272,16 @@
                                   :printed-value 1
                                   :ns (str (@session #'*original-clj-ns*)))))))
 
-(defn- load-file [{:keys [session transport file file-name] :as msg}]
-  (cljs.env/with-compiler-env (@session #'*cljs-compiler-env*)
-    (binding [ana/*cljs-ns* (@session #'ana/*cljs-ns*)]
-      (cljs.repl/load-stream (@session #'*cljs-repl-env*) file-name (StringReader. file)))))
+; struggled for too long trying to interface directly with cljs.repl/load-file,
+; so just mocking a "regular" load-file call
+; this seems to work perfectly, *but* it only loads the content of the file from
+; disk, not the content of the file sent in the message (in contrast to nREPL on
+; Clojure). This is necessitated by the expectation of cljs.repl/load-file that
+; the file being loaded is on disk, in the location implied by the namespace
+; declaration.
+; TODO either pull in our own `load-file` that doesn't imply this, or raise the issue upstream.
+(defn- load-file [{:keys [session transport file-path] :as msg}]
+  (evaluate (assoc msg :code (format "(load-file %s)" (pr-str file-path)))))
 
 (defn wrap-cljs-repl [handler]
   (fn [{:keys [session op] :as msg}]
