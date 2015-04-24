@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## `0.2.1`
+
+Fixes nREPL load-file support, implementing it in terms of evaluation of the
+`load-file` `cljs.repl` special function.
+
 ## `0.2.0`
 
 This release is essentially a rewrite to accommodate the significant changes to
