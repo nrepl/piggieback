@@ -199,6 +199,7 @@
            :caught (fn [err repl-env repl-options]
                      (let [root-ex (#'clojure.main/root-cause err)]
                        (when-not (instance? ThreadDeath root-ex)
+                         (swap! session assoc #'*e err)
                          (transport/send transport (response-for nrepl-msg {:status :eval-error
                                                                             :ex (-> err class str)
                                                                             :root-ex (-> root-ex class str)}))
