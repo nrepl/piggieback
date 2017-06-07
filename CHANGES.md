@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## `0.2.2`
+
+* Removed superfluous Clojure 1.6.0 dependency (gh-70)
+* The current nREPL's session's `*e` binding is now set properly when an
+  uncaught exception occurs.
+
 ## `0.2.1`
 
 Fixes nREPL load-file support, implementing it in terms of evaluation of the
