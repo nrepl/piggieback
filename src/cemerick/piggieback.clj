@@ -218,7 +218,11 @@
   ; environment after each eval
   (try
     (let [repl-env (delegating-repl-env repl-env nil)]
-      (set! ana/*cljs-ns* 'cljs.user)
+      (try
+        (set! ana/*cljs-ns* 'cljs.user)
+        (catch IllegalStateException e
+          (println "Can't set root bindings. This is likely caused by the nrepl middleware failing to load. You may have misconfigured it, or it could be a result of running in an unsupported environment (specifically `lein trampoline repl` generally doesn't work right; run without trampoline). Exact exception below.")
+          (throw e)))
       ; this will implicitly set! *cljs-compiler-env*
       (run-cljs-repl (assoc ieval/*msg* ::first-cljs-repl true)
         (nrepl/code (ns cljs.user
@@ -233,7 +237,10 @@
       (set! *ns* (find-ns ana/*cljs-ns*))
       (println "To quit, type:" :cljs/quit))
     (catch Exception e
-      (set! *cljs-repl-env* nil)
+      (try
+        (set! *cljs-repl-env* nil)
+        ;;bury so we get the real exception
+        (catch Exception _))
       (throw e))))
 
 ;; mostly a copy/paste from interruptible-eval
