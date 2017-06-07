@@ -4,7 +4,8 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :min-lein-version "2.0.0"
-  :dependencies [[org.clojure/tools.nrepl "0.2.10"]
+  :dependencies [[org.clojure/clojure "1.6.0" :scope "provided"]
+                 [org.clojure/tools.nrepl "0.2.10"]
                  [org.clojure/clojurescript "0.0-3165"]]
   
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
