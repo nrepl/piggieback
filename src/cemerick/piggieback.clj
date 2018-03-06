@@ -295,7 +295,8 @@
                          (if (rhino-repl-env? (.-repl-env repl-env))
                            (with-rhino-context (eval-cljs repl-env env form))
                            (eval-cljs repl-env env form))))]
-          (flush)
+          (.flush ^Writer *out*)
+          (.flush ^Writer *err*)
           (when (and
                  (or (not ns)
                      (not= init-ns ana/*cljs-ns*))
