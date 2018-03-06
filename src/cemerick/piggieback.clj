@@ -275,33 +275,48 @@
                                      (#'cljs.repl/wrap-fn form))]
     res))
 
+(defn do-eval [{:keys [session transport ^String code ns] :as msg}]
+  (binding [*out* (@session #'*out*)
+            *err* (@session #'*err*)
+            ana/*cljs-ns* (if ns (symbol ns) (@session #'ana/*cljs-ns*))
+            env/*compiler* (@session #'*cljs-compiler-env*)]
+    (let [repl-env (@session #'*cljs-repl-env*)
+          repl-options (@session #'*cljs-repl-options*)
+          init-ns ana/*cljs-ns*
+          special-fns (merge cljs.repl/default-special-fns (:special-fns repl-options))
+          is-special-fn? (set (keys special-fns))]
+      (try
+        (let [form (read-cljs-string code)
+              env  (assoc (ana/empty-env) :ns (ana/get-namespace init-ns))
+              result (when form
+                       (if (and (seq? form) (is-special-fn? (first form)))
+                         (do ((get special-fns (first form)) repl-env env form repl-options)
+                             nil)
+                         (if (rhino-repl-env? (.-repl-env repl-env))
+                           (with-rhino-context (eval-cljs repl-env env form))
+                           (eval-cljs repl-env env form))))]
+          (flush)
+          (when (and
+                 (or (not ns)
+                     (not= init-ns ana/*cljs-ns*))
+                 ana/*cljs-ns*)
+            (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
+          (transport/send
+           transport
+           (response-for msg
+                         {:value (or result "nil")
+                          :printed-value 1
+                          :ns (@session #'ana/*cljs-ns*)})))
+        (catch Throwable t
+          (repl-caught session transport msg t repl-env repl-options))))))
+
 ; only executed within the context of an nREPL session having *cljs-repl-env*
 ; bound. Thus, we're not going through interruptible-eval, and the user's
 ; Clojure session (dynamic environment) is not in place, so we need to go
 ; through the `session` atom to access/update its vars. Same goes for load-file.
 (defn- evaluate [{:keys [session transport ^String code] :as msg}]
   (if-not (.. code trim (endsWith ":cljs/quit"))
-    (binding [*out* (@session #'*out*)
-              *err* (@session #'*err*)
-              env/*compiler* (@session #'*cljs-compiler-env*)]
-      (let [repl-env (@session #'*cljs-repl-env*)]
-        (try
-          (let [form (read-cljs-string code)
-                result (when form
-                         (eval-cljs
-                          repl-env
-                          (assoc (ana/empty-env)
-                                 :ns
-                                 (ana/get-namespace (@session #'ana/*cljs-ns*)))
-                          form))]
-            (transport/send
-             transport
-             (response-for msg
-                           {:value (or result "nil")
-                            :printed-value 1
-                            :ns (@session #'ana/*cljs-ns*)})))
-          (catch Throwable t
-            (repl-caught session transport msg t repl-env {})))))
+    (do-eval msg)
     (let [actual-repl-env (.-repl-env (@session #'*cljs-repl-env*))]
       (if (rhino-repl-env? actual-repl-env)
         (with-rhino-context (cljs.repl/-tear-down actual-repl-env))

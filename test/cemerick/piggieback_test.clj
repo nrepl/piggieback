@@ -23,7 +23,7 @@
     (do (require 'cljs.repl.nashorn)
         (nrepl/code
           (cemerick.piggieback/cljs-repl
-            (cljs.repl.rhino/repl-env))))
+            (cljs.repl.nashorn/repl-env))))
     (nrepl/code
       (cemerick.piggieback/cljs-repl
         (cljs.repl.rhino/repl-env)))))
