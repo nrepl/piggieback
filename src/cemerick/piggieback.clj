@@ -10,7 +10,11 @@
             cljs.repl
             [cljs.env :as env]
             [cljs.analyzer :as ana]
-            [cljs.repl.rhino :as rhino])
+            [cljs.repl.rhino :as rhino]
+            [cljs.tagged-literals :as tags]            
+            [clojure.string :as string]
+            [clojure.tools.reader :as reader]
+            [clojure.tools.reader.reader-types :as readers])
   (:import (org.mozilla.javascript Context ScriptableObject)
            clojure.lang.LineNumberingPushbackReader
            java.io.StringReader
@@ -150,6 +154,15 @@
       (swap! repl-env-ctors assoc (class repl-env) ctor)
       (ctor repl-env nil))))
 
+(defn repl-caught [session transport nrepl-msg err repl-env repl-options]
+  (let [root-ex (#'clojure.main/root-cause err)]
+    (when-not (instance? ThreadDeath root-ex)
+      (swap! session assoc #'*e err)
+      (transport/send transport (response-for nrepl-msg {:status :eval-error
+                                                         :ex (-> err class str)
+                                                         :root-ex (-> root-ex class str)}))
+      (cljs.repl/repl-caught err repl-env repl-options))))
+
 ;; actually running the REPLs
 
 (defn- run-cljs-repl [{:keys [session transport ns] :as nrepl-msg}
@@ -196,14 +209,7 @@
                                                   {:value (or result "nil")
                                                    :printed-value 1
                                                    :ns (@session #'ana/*cljs-ns*)}))))
-           :caught (fn [err repl-env repl-options]
-                     (let [root-ex (#'clojure.main/root-cause err)]
-                       (when-not (instance? ThreadDeath root-ex)
-                         (swap! session assoc #'*e err)
-                         (transport/send transport (response-for nrepl-msg {:status :eval-error
-                                                                            :ex (-> err class str)
-                                                                            :root-ex (-> root-ex class str)}))
-                         (cljs.repl/repl-caught err repl-env repl-options))))}
+           :caught (partial repl-caught session transport nrepl-msg)}
           options)))))
 
 ; This function always executes when the nREPL session is evaluating Clojure,
@@ -248,16 +254,70 @@
         (transport/send transport (response-for msg :status :done))
         (alter-meta! session dissoc :thread :eval-msg)))))
 
+(defn read-cljs-string [form-str]
+  (when-not (string/blank? form-str)
+    (binding [*ns* (create-ns ana/*cljs-ns*)
+              reader/resolve-symbol ana/resolve-symbol
+              reader/*data-readers* tags/*cljs-data-readers*
+              reader/*alias-map*
+              (apply merge
+                     ((juxt :requires :require-macros)
+                      (ana/get-namespace ana/*cljs-ns*)))]
+      (reader/read {:read-cond :allow :features #{:cljs}}
+                   (readers/source-logging-push-back-reader
+                    (java.io.StringReader. form-str))))))
+
+(defn eval-cljs [repl-env env form]
+  (let [res (cljs.repl/evaluate-form repl-env
+                                     env
+                                     "<cljs repl>"
+                                     form
+                                     (#'cljs.repl/wrap-fn form))]
+    res))
+
+(defn do-eval [{:keys [session transport ^String code ns] :as msg}]
+  (binding [*out* (@session #'*out*)
+            *err* (@session #'*err*)
+            ana/*cljs-ns* (if ns (symbol ns) (@session #'ana/*cljs-ns*))
+            env/*compiler* (@session #'*cljs-compiler-env*)]
+    (let [repl-env (@session #'*cljs-repl-env*)
+          repl-options (@session #'*cljs-repl-options*)
+          init-ns ana/*cljs-ns*
+          special-fns (merge cljs.repl/default-special-fns (:special-fns repl-options))
+          is-special-fn? (set (keys special-fns))]
+      (try
+        (let [form (read-cljs-string code)
+              env  (assoc (ana/empty-env) :ns (ana/get-namespace init-ns))
+              result (when form
+                       (if (and (seq? form) (is-special-fn? (first form)))
+                         (do ((get special-fns (first form)) repl-env env form repl-options)
+                             nil)
+                         (if (rhino-repl-env? (.-repl-env repl-env))
+                           (with-rhino-context (eval-cljs repl-env env form))
+                           (eval-cljs repl-env env form))))]
+          (.flush ^Writer *out*)
+          (.flush ^Writer *err*)
+          (when (and
+                 (or (not ns)
+                     (not= init-ns ana/*cljs-ns*))
+                 ana/*cljs-ns*)
+            (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
+          (transport/send
+           transport
+           (response-for msg
+                         {:value (or result "nil")
+                          :printed-value 1
+                          :ns (@session #'ana/*cljs-ns*)})))
+        (catch Throwable t
+          (repl-caught session transport msg t repl-env repl-options))))))
+
 ; only executed within the context of an nREPL session having *cljs-repl-env*
 ; bound. Thus, we're not going through interruptible-eval, and the user's
 ; Clojure session (dynamic environment) is not in place, so we need to go
 ; through the `session` atom to access/update its vars. Same goes for load-file.
 (defn- evaluate [{:keys [session transport ^String code] :as msg}]
-  ; we append a :cljs/quit to every chunk of code evaluated so we can break out of cljs.repl/repl*'s loop,
-  ; so we need to go a gnarly little stringy check here to catch any actual user-supplied exit
   (if-not (.. code trim (endsWith ":cljs/quit"))
-    (apply run-cljs-repl msg code
-      (map @session [#'*cljs-repl-env* #'*cljs-compiler-env* #'*cljs-repl-options*]))
+    (do-eval msg)
     (let [actual-repl-env (.-repl-env (@session #'*cljs-repl-env*))]
       (if (rhino-repl-env? actual-repl-env)
         (with-rhino-context (cljs.repl/-tear-down actual-repl-env))
@@ -304,3 +364,4 @@
    ; piggieback unconditionally hijacks eval and load-file
    :expects #{"eval" "load-file"}
    :handles {}})
+
