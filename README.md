@@ -1,4 +1,6 @@
-# Piggieback [![Travis CI status](https://secure.travis-ci.org/cemerick/piggieback.png?branch=master)](http://travis-ci.org/#!/cemerick/piggieback/builds)
+[![Build Status](https://travis-ci.org/clojure-emacs/piggieback.png?branch=master)](http://travis-ci.org/clojure-emacs/piggieback)
+
+# Piggieback
 
 [nREPL](http://github.com/clojure/tools.nrepl) middleware that enables the
 use of a ClojureScript REPL on top of an nREPL session.
