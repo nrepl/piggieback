@@ -11,7 +11,7 @@
             [cljs.env :as env]
             [cljs.analyzer :as ana]
             [cljs.repl.rhino :as rhino]
-            [cljs.tagged-literals :as tags]            
+            [cljs.tagged-literals :as tags]
             [clojure.string :as string]
             [clojure.tools.reader :as reader]
             [clojure.tools.reader.reader-types :as readers])
@@ -82,7 +82,7 @@
 
 ; delegating REPL environments
 ; all this to avoid setting up the "real" REPL environment every time we enter
-; cljs.repl/repl*, and to squelch -tear-down entiretly
+; cljs.repl/repl*, and to squelch -tear-down entirely
 
 ; we need a delegating REPL environment type for each concrete REPL environment
 ; type we see, so that the various `satisfies?` calls that `cljs.repl` makes on
@@ -117,7 +117,7 @@
       (list* 'deftype (symbol dclassname)
         '([repl-env ^:volatile-mutable setup-return-val]
            cljs.repl/IJavaScriptEnv
-           (-setup [this options] 
+           (-setup [this options]
              (when (nil? setup-return-val)
                (set! setup-return-val (atom (if (#'cemerick.piggieback/rhino-repl-env? repl-env)
                                               (#'cemerick.piggieback/setup-rhino-env repl-env options)
@@ -364,4 +364,3 @@
    ; piggieback unconditionally hijacks eval and load-file
    :expects #{"eval" "load-file"}
    :handles {}})
-
