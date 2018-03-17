@@ -5,16 +5,6 @@
 [nREPL](http://github.com/clojure/tools.nrepl) middleware that enables the
 use of a ClojureScript REPL on top of an nREPL session.
 
-<!--
-#### **Wait!**
-
-Are you just getting started with ClojureScript or using ClojureScript
-in a REPL? You should almost certainly be starting with
-[Austin](https://github.com/cemerick/austin); it uses Piggieback, but wraps it
-up with a bunch of helpful utilities, auto-configuration of your `project.clj`,
-and other goodies.
--->
-
 ## Why?
 
 Two reasons:
@@ -37,7 +27,7 @@ the same options as `cljs.repl/repl`. When the ClojureScript REPL is terminated
 (by sending `:cljs/quit` for evaluation), the nREPL session is restored to it
 original state.
 
-## "Installation"
+## Installation
 
 These instructions are for Leiningen. Translating them for use in boot should be
 straightforward.
@@ -156,11 +146,11 @@ development of piggieback.
 
 Send a message to the
 [clojure-tools](http://groups.google.com/group/clojure-tools) mailing list, or
-ping `cemerick` on freenode irc or [twitter](http://twitter.com/cemerick) if you
+ping `@bhauman` or `@bbatsov` on the Clojurians Slack or Twitter if you
 have questions or would like to contribute patches.
 
 ## License
 
-Copyright © 2012-2015 Chas Emerick and other contributors.
+Copyright © 2012-2018 Chas Emerick and other contributors.
 
 Distributed under the Eclipse Public License, the same as Clojure.
