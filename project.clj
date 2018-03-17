@@ -7,17 +7,17 @@
   :dependencies [[org.clojure/clojure "1.8.0" :scope "provided"]
                  [org.clojure/tools.nrepl "0.2.10"]
                  [org.clojure/clojurescript "1.9.946"]]
-  
+
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
-  
+
   :deploy-repositories {"releases" {:url "https://oss.sonatype.org/service/local/staging/deploy/maven2/" :creds :gpg}
                         "snapshots" {:url "https://oss.sonatype.org/content/repositories/snapshots/" :creds :gpg}}
 
   :aliases  {"all" ["with-profile" "dev"]}
 
-  ; painful for users; https://github.com/technomancy/leiningen/issues/1771
+                                        ; painful for users; https://github.com/technomancy/leiningen/issues/1771
   :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.10"]]}}
-  
+
   ;;maven central requirements
   :scm {:url "git@github.com:cemerick/piggieback.git"}
   :pom-addition [:developers [:developer
