@@ -1,6 +1,6 @@
-(ns ^{:doc "nREPL middleware enabling the transparent use of a ClojureScript REPL with nREPL tooling."
-      :author "Chas Emerick"}
-     cemerick.piggieback
+(ns cemerick.piggieback
+  "nREPL middleware enabling the transparent use of a ClojureScript REPL with nREPL tooling."
+  {:author "Chas Emerick"}
   (:require [clojure.tools.nrepl :as nrepl]
             (clojure.tools.nrepl [transport :as transport]
                                  [misc :refer (response-for returning)]
