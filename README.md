@@ -68,7 +68,7 @@ handler:
   )
 ```
 
-(Alternatively, you can add `wrap-cljs-repl` to your application's hand-tweaked
+Alternatively, you can add `wrap-cljs-repl` to your application's hand-tweaked
 nREPL handler.  Keep two things in mind when doing so:
 
 * Piggieback needs to be "above" nREPL's
