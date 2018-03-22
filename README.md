@@ -14,11 +14,12 @@ Two reasons:
 tutorial) assumes that it is running in a teletype environment. This works fine
 with nREPL tools in that environment (e.g. `lein repl` in `Terminal.app` or
 `gnome-terminal`, etc), but isn't suitable for development environments that
-have richer interaction models (including editors like vim [fireplace] and emacs
-[CIDER] and IDEs like Intellij [Cursive] and Eclipse [Counterclockwise]).
+have richer interaction models (including editors like vim ([vim-fireplace][]) and Emacs
+([CIDER][]), and IDEs like Intellij ([Cursive][]) and Eclipse ([Counterclockwise][CCW])).
+
 * Most of the more advanced tool support for Clojure and ClojureScript (code
   completion, introspection and inspector utilities, refactoring tools, etc) is
-  packaged and delivered as nREPL extensions.
+  packaged and delivered as nREPL extensions (e.g. [cider-nrepl][] and [refactor-nrepl][]).
 
 Piggieback provides an alternative ClojureScript REPL entry point
 (`cemerick.piggieback/cljs-repl`) that changes an nREPL session into a
@@ -154,3 +155,10 @@ have questions or would like to contribute patches.
 Copyright © 2012-2018 Chas Emerick and other contributors.
 
 Distributed under the Eclipse Public License, the same as Clojure.
+
+[vim-fireplace]: https://github.com/tpope/vim-fireplace
+[C<ursive]: https://cursive-ide.com/
+[CIDER]: https://github.com/clojure-emacs/CIDER
+[cider-nrepl]: https://github.com/clojure-emacs/cider-nrepl
+[refactor-nrepl]: https://github.com/clojure-emacs/refactor-nrepl
+[CCW]: https://github.com/ccw-ide/ccw
