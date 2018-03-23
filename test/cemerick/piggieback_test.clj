@@ -28,23 +28,31 @@
      (cemerick.piggieback/cljs-repl
       (cljs.repl.rhino/repl-env)))))
 
+(defmacro eastwood-ignore-unused-ret
+  "Use this macro to mark evaluations that intentionally throw away
+  their return values so we can tell Eastwood to ignore them."
+  [body]
+  body)
+
 (defn repl-server-fixture
   [f]
   (with-open [server (server/start-server
-                      :bind "localhost"
+                      :bind "127.0.0.1"
                       :handler (server/default-handler #'cemerick.piggieback/wrap-cljs-repl))]
     (let [port (.getLocalPort (:ss @server))
           conn (nrepl/connect :port port)
           session (nrepl/client-session (nrepl/client conn Long/MAX_VALUE))]
       ;; need to let the dynamic bindings get in place before trying to eval anything that
-      ;; depends upon those bingings being set
-      (doall (nrepl/message session {:op "eval" :code cljs-repl-start-code}))
+      ;; depends upon those bindings being set
+      (eastwood-ignore-unused-ret
+       (doall (nrepl/message session {:op "eval" :code cljs-repl-start-code})))
       (try
         (binding [*server-port* port
                   *session* session]
           (f))
         (finally
-          (doall (nrepl/message session {:op "eval" :code ":cljs/quit"}))
+          (eastwood-ignore-unused-ret
+           (doall (nrepl/message session {:op "eval" :code ":cljs/quit"})))
           (assert-exit-ns session "user"))))))
 
 (use-fixtures :once repl-server-fixture)
@@ -55,7 +63,8 @@
   ;; in piggieback (which has no visibility into the session serialization mechanism). The
   ;; fix is to work like a REPL _should_, i.e. wait for the full response of an evaluation
   ;; prior to sending out another chunk of code.
-  (doall (nrepl/message *session* {:op "eval" :code "(defn x [] (into [] (js/Array 1 2 3)))"}))
+  (eastwood-ignore-unused-ret
+   (doall (nrepl/message *session* {:op "eval" :code "(defn x [] (into [] (js/Array 1 2 3)))"})))
   (is (= [1 2 3] (->> {:op "eval" :code "(x)"} (nrepl/message *session*) nrepl/response-values first))))
 
 (deftest printing-works
@@ -71,7 +80,9 @@
   (is (= "foo.bar" (-> (nrepl/message *session* {:op "eval" :code "(ns foo.bar)"})
                        nrepl/combine-responses
                        :ns)))
-  (doall (nrepl/message *session* {:op "eval" :code "(defn ns-tracking [] (into [] (js/Array 1 2 3)))"}))
+
+  (eastwood-ignore-unused-ret
+   (doall (nrepl/message *session* {:op "eval" :code "(defn ns-tracking [] (into [] (js/Array 1 2 3)))"})))
 
   (is (= ["[1 2 3]"] (-> (nrepl/message *session* {:op "eval" :code "(ns-tracking)"})
                          nrepl/combine-responses
