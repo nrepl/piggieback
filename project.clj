@@ -25,11 +25,7 @@
 
              :cloverage {:plugins [[lein-cloverage "1.0.11-SNAPSHOT"]]}
 
-             :cljfmt {:plugins [[lein-cljfmt "0.5.7"]]
-                      :cljfmt  {:indents {as->                [[:inner 0]]
-                                          with-debug-bindings [[:inner 0]]
-                                          merge-meta          [[:inner 0]]
-                                          try-if-let          [[:block 1]]}}}
+             :cljfmt {:plugins [[lein-cljfmt "0.5.7"]]}
 
              :eastwood {:plugins  [[jonase/eastwood "0.2.5"]]
                         :eastwood {:config-files ["eastwood.clj"]}}}
