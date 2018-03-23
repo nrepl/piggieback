@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/clojure-emacs/piggieback.png?branch=master)](http://travis-ci.org/clojure-emacs/piggieback)
+[![codecov](https://codecov.io/gh/clojure-emacs/orchard/branch/master/graph/badge.svg)](https://codecov.io/gh/clojure-emacs/piggieback)
 
 # Piggieback
 

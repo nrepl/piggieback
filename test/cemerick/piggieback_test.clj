@@ -31,7 +31,8 @@
 (defn repl-server-fixture
   [f]
   (with-open [server (server/start-server
-                       :handler (server/default-handler #'cemerick.piggieback/wrap-cljs-repl))]
+                      :bind "localhost"
+                      :handler (server/default-handler #'cemerick.piggieback/wrap-cljs-repl))]
     (let [port (.getLocalPort (:ss @server))
           conn (nrepl/connect :port port)
           session (nrepl/client-session (nrepl/client conn Long/MAX_VALUE))]
