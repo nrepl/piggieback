@@ -157,7 +157,7 @@ Copyright © 2012-2018 Chas Emerick and other contributors.
 Distributed under the Eclipse Public License, the same as Clojure.
 
 [vim-fireplace]: https://github.com/tpope/vim-fireplace
-[C<ursive]: https://cursive-ide.com/
+[Cursive]: https://cursive-ide.com/
 [CIDER]: https://github.com/clojure-emacs/CIDER
 [cider-nrepl]: https://github.com/clojure-emacs/cider-nrepl
 [refactor-nrepl]: https://github.com/clojure-emacs/refactor-nrepl
