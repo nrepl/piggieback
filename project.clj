@@ -30,7 +30,7 @@
              :eastwood {:plugins  [[jonase/eastwood "0.2.5"]]
                         :eastwood {:config-files ["eastwood.clj"]}}}
 
-  ;;maven central requirements
+  ;; maven central requirements
   :scm {:url "git@github.com:cemerick/piggieback.git"}
   :pom-addition [:developers [:developer
                               [:name "Chas Emerick"]
