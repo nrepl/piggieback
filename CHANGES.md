@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## `0.2.3`
+
+* Changed the artefact coordinates to `cider/piggieback`. It's now being deployed
+to Clojars, instead of to Maven Central.
+* Make eval just eval, instead of creating a new REPL for each evaluation.
+* Piggieback now requires ClojureScript 1.9 and Java 8.
+
 ## `0.2.2`
 
 * Removed superfluous Clojure 1.6.0 dependency (gh-70)
