@@ -34,14 +34,14 @@ original state.
 These instructions are for Leiningen. Translating them for use in boot should be
 straightforward.
 
-Piggieback is compatible with Clojure 1.6.0+, and _requires_ ClojureScript
-`0.0-3165` or later and nREPL `0.2.10` or later.
+Piggieback is compatible with Clojure 1.8.0+, and _requires_ ClojureScript
+`1.9` or later and nREPL `0.2.10` or later.
 
 Modify your `project.clj` to include the following `:dependencies` and
 `:repl-options`:
 
 ```clojure
-:profiles {:dev {:dependencies [[com.cemerick/piggieback "0.2.2"]
+:profiles {:dev {:dependencies [[cider/piggieback "0.2.2"]
                                 [org.clojure/tools.nrepl "0.2.10"]]
                  :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}}}
 ```
