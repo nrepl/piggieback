@@ -94,8 +94,7 @@
   ;; TODO I think we need a var to set! the compiler environment from the REPL
   ;; environment after each eval
   (try
-    (let [;repl-env (delegating-repl-env repl-env nil)
-          repl-opts (cljs.repl/-repl-options repl-env)
+    (let [repl-opts (cljs.repl/-repl-options repl-env)
           opts (merge
                 {:def-emits-var true}
                 (cljs.closure/add-implicit-options
@@ -238,3 +237,4 @@
                   ;; piggieback unconditionally hijacks eval and load-file
                   :expects #{"eval" "load-file"}
                   :handles {}})
+
