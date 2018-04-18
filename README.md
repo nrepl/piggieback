@@ -137,7 +137,10 @@ cljs.user=> (<3 "nREPL still" "ClojureScript")
 (The ugly `ThreadDeath` exception will be eliminated eventually.)
 
 Piggieback works well with all known ClojureScript REPL environments, including
-the Rhino, Nashorn, Node, and browser REPLs.
+Nashorn, Node, and browser REPLs.
+
+Support for Rhino was dropped in version 0.3. All users of Rhino are
+advised to switch to using Nashorn instead.
 
 ## Acknowledgements
 
