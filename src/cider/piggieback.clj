@@ -27,78 +27,6 @@
 (def ^:private ^:dynamic *cljs-repl-options* nil)
 (def ^:private ^:dynamic *original-clj-ns* nil)
 
-;; delegating REPL environments
-;; all this to avoid setting up the "real" REPL environment every time we enter
-;; cljs.repl/repl*, and to squelch -tear-down entirely
-
-;; we need a delegating REPL environment type for each concrete REPL environment
-;; type we see, so that the various `satisfies?` calls that `cljs.repl` makes on
-;; our delegating type are true to what is actually supported; in effect, this is
-;; all a single-purpose implementation of ClojureScript's `specify`, just to be
-;; able to override the implementations of -setup and -tear-down supplied for
-;; each type of REPL environment
-(def ^:private cljs-repl-protocol-impls
-  {cljs.repl/IReplEnvOptions
-   {:-repl-options (fn [repl-env] (cljs.repl/-repl-options (.-repl-env repl-env)))}
-   cljs.repl/IParseError
-   {:-parse-error (fn [repl-env err build-options]
-                    (cljs.repl/-parse-error (.-repl-env repl-env) err build-options))}
-   cljs.repl/IGetError
-   {:-get-error (fn [repl-env name env build-options]
-                  (cljs.repl/-get-error (.-repl-env repl-env) name env build-options))}
-   cljs.repl/IParseStacktrace
-   {:-parse-stacktrace (fn [repl-env stacktrace err build-options]
-                         (cljs.repl/-parse-stacktrace (.-repl-env repl-env) stacktrace err build-options))}
-   cljs.repl/IPrintStacktrace
-   {:-print-stacktrace (fn [repl-env stacktrace err build-options]
-                         (cljs.repl/-print-stacktrace (.-repl-env repl-env) stacktrace err build-options))}})
-
-;; type -> ctor-fn
-(def ^:private repl-env-ctors (atom {}))
-
-(defn- generate-delegating-repl-env [repl-env]
-  (let [repl-env-class (class repl-env)
-        classname (.replace (.getName repl-env-class) \. \_)
-        dclassname (str "Delegating" classname)]
-    (eval
-     (list* 'deftype (symbol dclassname)
-            '([repl-env ^:volatile-mutable setup-return-val]
-              cljs.repl/IJavaScriptEnv
-              (-setup [this options]
-                      (when (nil? setup-return-val)
-                        (set! setup-return-val (atom (cljs.repl/-setup repl-env options))))
-                      @setup-return-val)
-              (-evaluate [this a b c] (cljs.repl/-evaluate repl-env a b c))
-              (-load [this ns url] (cljs.repl/-load repl-env ns url))
-              (-tear-down [_])
-              clojure.lang.ILookup
-              (valAt [_ k] (get repl-env k))
-              (valAt [_ k default] (get repl-env k default))
-              clojure.lang.Seqable
-              (seq [_] (seq repl-env))
-              clojure.lang.Associative
-              (containsKey [_ k] (contains? repl-env k))
-              (entryAt [_ k] (find repl-env k))
-              (assoc [_ k v] (#'cider.piggieback/delegating-repl-env (assoc repl-env k v) setup-return-val))
-              clojure.lang.IPersistentCollection
-              (count [_] (count repl-env))
-              (cons [_ entry] (conj repl-env entry))
-              ;; pretty meaningless; most REPL envs are records for the assoc'ing, but they're not values
-              (equiv [_ other] false))))
-    (let [dclass (resolve (symbol dclassname))
-          ctor (resolve (symbol (str "->" dclassname)))]
-      (doseq [[protocol fn-map] cljs-repl-protocol-impls]
-        (when (satisfies? protocol repl-env)
-          (extend dclass protocol fn-map)))
-      @ctor)))
-
-(defn- delegating-repl-env [repl-env setup-return-val]
-  (if-let [ctor (@repl-env-ctors (class repl-env))]
-    (ctor repl-env nil)
-    (let [ctor (generate-delegating-repl-env repl-env)]
-      (swap! repl-env-ctors assoc (class repl-env) ctor)
-      (ctor repl-env nil))))
-
 (defn repl-caught [session transport nrepl-msg err repl-env repl-options]
   (let [root-ex (#'clojure.main/root-cause err)]
     (when-not (instance? ThreadDeath root-ex)
@@ -166,7 +94,7 @@
   ;; TODO I think we need a var to set! the compiler environment from the REPL
   ;; environment after each eval
   (try
-    (let [repl-env (delegating-repl-env repl-env nil)
+    (let [;repl-env (delegating-repl-env repl-env nil)
           repl-opts (cljs.repl/-repl-options repl-env)
           opts (merge
                 {:def-emits-var true}
@@ -266,7 +194,7 @@
 (defn- evaluate [{:keys [session transport ^String code] :as msg}]
   (if-not (.. code trim (endsWith ":cljs/quit"))
     (do-eval msg)
-    (let [actual-repl-env (.-repl-env (@session #'*cljs-repl-env*))]
+    (let [actual-repl-env (@session #'*cljs-repl-env*)]
       (cljs.repl/-tear-down actual-repl-env)
       (swap! session assoc
              #'*ns* (@session #'*original-clj-ns*)
