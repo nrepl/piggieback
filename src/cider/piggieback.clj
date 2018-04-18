@@ -1,4 +1,4 @@
-(ns cemerick.piggieback
+(ns cider.piggieback
   "nREPL middleware enabling the transparent use of a ClojureScript REPL with nREPL tooling."
   {:author "Chas Emerick"}
   (:require [clojure.tools.nrepl :as nrepl]
@@ -10,7 +10,6 @@
             cljs.repl
             [cljs.env :as env]
             [cljs.analyzer :as ana]
-            [cljs.repl.rhino :as rhino]
             [cljs.tagged-literals :as tags]
             [clojure.string :as string]
             [clojure.tools.reader :as reader]
@@ -27,58 +26,6 @@
 (def ^:private ^:dynamic *cljs-compiler-env* nil)
 (def ^:private ^:dynamic *cljs-repl-options* nil)
 (def ^:private ^:dynamic *original-clj-ns* nil)
-
-;; ================ Rhino junk =================
-
-(defn- rhino-repl-env?
-  [repl-env]
-  (instance? cljs.repl.rhino.RhinoEnv repl-env))
-
-(defmacro ^:private squelch-rhino-context-error
-  "Catches and silences the exception thrown by (Context/exit)
-   when it is called without a corresponding (Context/enter).
-   Needed because rhino/repl-env calls Context/enter without
-   a corresponding Context/exit; it assumes:
-
-   (a) the context will only ever be used on one thread
-   (b) cljs.repl/repl will clean up the context when the
-       command-line cljs repl exits"
-  [& body]
-  `(try
-     ~@body
-     (catch IllegalStateException e#
-       (when-not (-> e# .getMessage (.contains "Context.exit without previous Context.enter"))
-         (throw e#)))))
-
-(defmacro ^:private with-rhino-context
-  [& body]
-  `(try
-     (Context/enter)
-     ~@body
-     (finally
-       ;; -tear-down for rhino environments always calls Context/exit, so we need
-       ;; to kill the resulting error to avoid an exception printing on :cljs/quit
-       (squelch-rhino-context-error (Context/exit)))))
-
-(defn- map-stdout
-  [rhino-env out]
-  (ScriptableObject/putProperty
-   (:scope rhino-env)
-   "out"
-   (Context/javaToJS out (:scope rhino-env))))
-
-(defn- setup-rhino-env
-  [rhino-env options]
-  (with-rhino-context
-    (let [ret (cljs.repl/-setup rhino-env options)]
-      ;; rhino/rhino-setup maps System/out to "out" and therefore the target of
-      ;; cljs' *print-fn*! :-(
-      (map-stdout rhino-env *out*)
-      ;; rhino/repl-env calls (Context/enter) without a (Context/exit)
-      (squelch-rhino-context-error (Context/exit))
-      ret)))
-
-;; ================ end Rhino junk =============
 
 ;; delegating REPL environments
 ;; all this to avoid setting up the "real" REPL environment every time we enter
@@ -119,9 +66,7 @@
               cljs.repl/IJavaScriptEnv
               (-setup [this options]
                       (when (nil? setup-return-val)
-                        (set! setup-return-val (atom (if (#'cemerick.piggieback/rhino-repl-env? repl-env)
-                                                       (#'cemerick.piggieback/setup-rhino-env repl-env options)
-                                                       (cljs.repl/-setup repl-env options)))))
+                        (set! setup-return-val (atom (cljs.repl/-setup repl-env options))))
                       @setup-return-val)
               (-evaluate [this a b c] (cljs.repl/-evaluate repl-env a b c))
               (-load [this ns url] (cljs.repl/-load repl-env ns url))
@@ -134,7 +79,7 @@
               clojure.lang.Associative
               (containsKey [_ k] (contains? repl-env k))
               (entryAt [_ k] (find repl-env k))
-              (assoc [_ k v] (#'cemerick.piggieback/delegating-repl-env (assoc repl-env k v) setup-return-val))
+              (assoc [_ k v] (#'cider.piggieback/delegating-repl-env (assoc repl-env k v) setup-return-val))
               clojure.lang.IPersistentCollection
               (count [_] (count repl-env))
               (cons [_ entry] (conj repl-env entry))
@@ -168,9 +113,7 @@
 (defn- run-cljs-repl [{:keys [session transport ns] :as nrepl-msg}
                       code repl-env compiler-env options]
   (let [initns (if ns (symbol ns) (@session #'ana/*cljs-ns*))
-        repl (if (rhino-repl-env? (.-repl-env repl-env))
-               #(with-rhino-context (apply cljs.repl/repl* %&))
-               cljs.repl/repl*)
+        repl cljs.repl/repl*
         flush (fn []
                 (.flush ^Writer (@session #'*out*))
                 (.flush ^Writer (@session #'*err*)))]
@@ -292,9 +235,7 @@
                        (if (and (seq? form) (is-special-fn? (first form)))
                          (do ((get special-fns (first form)) repl-env env form repl-options)
                              nil)
-                         (if (rhino-repl-env? (.-repl-env repl-env))
-                           (with-rhino-context (eval-cljs repl-env env form))
-                           (eval-cljs repl-env env form))))]
+                         (eval-cljs repl-env env form)))]
           (.flush ^Writer *out*)
           (.flush ^Writer *err*)
           (when (and
@@ -319,9 +260,7 @@
   (if-not (.. code trim (endsWith ":cljs/quit"))
     (do-eval msg)
     (let [actual-repl-env (.-repl-env (@session #'*cljs-repl-env*))]
-      (if (rhino-repl-env? actual-repl-env)
-        (with-rhino-context (cljs.repl/-tear-down actual-repl-env))
-        (cljs.repl/-tear-down actual-repl-env))
+      (cljs.repl/-tear-down actual-repl-env)
       (swap! session assoc
              #'*ns* (@session #'*original-clj-ns*)
              #'*cljs-repl-env* nil

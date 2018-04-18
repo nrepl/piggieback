@@ -1,5 +1,5 @@
-(ns cemerick.piggieback-test
-  (:require [cemerick.piggieback :as pb]
+(ns cider.piggieback-test
+  (:require [cider.piggieback :as pb]
             [clojure.tools.nrepl :as nrepl]
             (clojure.tools.nrepl [server :as server]))
   (:use clojure.test))
@@ -14,19 +14,11 @@
                                session
                                {:op "eval" :code "clojure.core/*ns*"}))))))
 
-(def ^:private jdk8+ (try (import 'java.time.Instant)
-                          true
-                          (catch Exception _ false)))
-
 (def ^:private cljs-repl-start-code
-  (if jdk8+
-    (do (require 'cljs.repl.nashorn)
-        (nrepl/code
-         (cemerick.piggieback/cljs-repl
-          (cljs.repl.nashorn/repl-env))))
-    (nrepl/code
-     (cemerick.piggieback/cljs-repl
-      (cljs.repl.rhino/repl-env)))))
+  (do (require 'cljs.repl.nashorn)
+      (nrepl/code
+       (cider.piggieback/cljs-repl
+        (cljs.repl.nashorn/repl-env)))))
 
 (defmacro eastwood-ignore-unused-ret
   "Use this macro to mark evaluations that intentionally throw away
@@ -38,7 +30,7 @@
   [f]
   (with-open [server (server/start-server
                       :bind "127.0.0.1"
-                      :handler (server/default-handler #'cemerick.piggieback/wrap-cljs-repl))]
+                      :handler (server/default-handler #'cider.piggieback/wrap-cljs-repl))]
     (let [port (.getLocalPort (:ss @server))
           conn (nrepl/connect :port port)
           session (nrepl/client-session (nrepl/client conn Long/MAX_VALUE))]

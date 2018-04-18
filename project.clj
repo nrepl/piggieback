@@ -1,4 +1,4 @@
-(defproject cider/piggieback "0.2.3"
+(defproject cider/piggieback "0.3.0"
   :description "Adding support for running ClojureScript REPLs over nREPL."
   :url "http://github.com/clojure-emacs/piggieback"
   :license {:name "Eclipse Public License"
@@ -6,7 +6,7 @@
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/tools.nrepl "0.2.10"]]
 
-  :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
+  :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}
 
   :deploy-repositories [["clojars" {:url "https://clojars.org/repo"
                                     :sign-releases false}]]

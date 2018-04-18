@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## `0.3.0`
+
+* Drop support for Rhino.
+* Change the namespace prefix from `cemerick` to `cider`.
+
 ## `0.2.3`
 
 * Changed the artefact coordinates to `cider/piggieback`. It's now being deployed

@@ -23,7 +23,7 @@ have richer interaction models (including editors like vim ([vim-fireplace][]) a
   packaged and delivered as nREPL extensions (e.g. [cider-nrepl][] and [refactor-nrepl][]).
 
 Piggieback provides an alternative ClojureScript REPL entry point
-(`cemerick.piggieback/cljs-repl`) that changes an nREPL session into a
+(`cider.piggieback/cljs-repl`) that changes an nREPL session into a
 ClojureScript REPL for `eval` and `load-file` operations, while accepting all
 the same options as `cljs.repl/repl`. When the ClojureScript REPL is terminated
 (by sending `:cljs/quit` for evaluation), the nREPL session is restored to it
@@ -41,9 +41,9 @@ Modify your `project.clj` to include the following `:dependencies` and
 `:repl-options`:
 
 ```clojure
-:profiles {:dev {:dependencies [[cider/piggieback "0.2.3"]
+:profiles {:dev {:dependencies [[cider/piggieback "0.3.0"]
                                 [org.clojure/tools.nrepl "0.2.10"]]
-                 :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}}}
+                 :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}
 ```
 
 The `:repl-options` bit causes `lein repl` to automagically mix the Piggieback
@@ -62,7 +62,7 @@ handler:
 
 ```clojure
 (require '[clojure.tools.nrepl.server :as server]
-         '[cemerick.piggieback :as pback])
+         '[cider.piggieback :as pback])
 
 (server/start-server
   :handler (server/default-handler #'pback/wrap-cljs-repl)
@@ -85,7 +85,7 @@ nREPL handler.  Keep two things in mind when doing so:
 ```
 $ lein repl
 ....
-user=> (cemerick.piggieback/cljs-repl (cljs.repl.rhino/repl-env))
+user=> (cider.piggieback/cljs-repl (cljs.repl.nashorn/repl-env))
 To quit, type: :cljs/quit
 nil
 cljs.user=> (defn <3 [a b] (str a " <3 " b "!"))
@@ -99,9 +99,9 @@ cljs.user=> (<3 "nREPL" "ClojureScript")
 ```
 
 See how the REPL prompt changed after invoking
-`cemerick.piggieback/cljs-repl`? After that point, all expressions sent to the
+`cider.piggieback/cljs-repl`? After that point, all expressions sent to the
 REPL are evaluated within the ClojureScript environment.
-`cemerick.piggieback/cljs-repl`'s passes along all of its options to
+`cider.piggieback/cljs-repl`'s passes along all of its options to
 `cljs.repl/repl`, so all of the tutorials and documentation related to it hold
 (including the
 [ClojureScript Quick Start tutorial](https://github.com/clojure/clojurescript/wiki/Quick-Start)).
