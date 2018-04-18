@@ -94,4 +94,10 @@
 
   (is (= "foo.bar" (-> (nrepl/message *session* {:op "eval" :code "(ns foo.bar)" :ns "cljs.user"})
                        nrepl/combine-responses
-                       :ns))))
+                       :ns)))
+  ;; verifying that this doesn't throw
+  (is (= [""] (-> (nrepl/message *session* {:op "eval" :code "(require 'hello-world.foo :reload)" :ns "foo.bar"})
+                  nrepl/combine-responses
+                  :value)))
+  
+  )

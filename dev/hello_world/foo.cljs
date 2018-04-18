@@ -1,0 +1,1 @@
+(ns hello-world.foo)

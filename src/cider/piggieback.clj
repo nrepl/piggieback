@@ -166,7 +166,13 @@
   ;; TODO I think we need a var to set! the compiler environment from the REPL
   ;; environment after each eval
   (try
-    (let [repl-env (delegating-repl-env repl-env nil)]
+    (let [repl-env (delegating-repl-env repl-env nil)
+          repl-opts (cljs.repl/-repl-options repl-env)
+          opts (merge
+                {:def-emits-var true}
+                (cljs.closure/add-implicit-options
+                 (merge-with (fn [a b] (if (nil? b) a b))
+                             repl-opts options)))]
       (set! ana/*cljs-ns* 'cljs.user)
       ;; this will implicitly set! *cljs-compiler-env*
       (run-cljs-repl (assoc ieval/*msg* ::first-cljs-repl true)
@@ -176,7 +182,7 @@
                      repl-env nil options)
       ;; (clojure.pprint/pprint (:options @*cljs-compiler-env*))
       (set! *cljs-repl-env* repl-env)
-      (set! *cljs-repl-options* options)
+      (set! *cljs-repl-options* opts)
       ;; interruptible-eval is in charge of emitting the final :ns response in this context
       (set! *original-clj-ns* *ns*)
       (set! *ns* (find-ns ana/*cljs-ns*))
@@ -210,12 +216,13 @@
                    (readers/source-logging-push-back-reader
                     (java.io.StringReader. form-str))))))
 
-(defn eval-cljs [repl-env env form]
+(defn eval-cljs [repl-env env form opts]
   (let [res (cljs.repl/evaluate-form repl-env
                                      env
                                      "<cljs repl>"
                                      form
-                                     (#'cljs.repl/wrap-fn form))]
+                                     (#'cljs.repl/wrap-fn form)
+                                     opts)]
     res))
 
 (defn do-eval [{:keys [session transport ^String code ns] :as msg}]
@@ -235,7 +242,7 @@
                        (if (and (seq? form) (is-special-fn? (first form)))
                          (do ((get special-fns (first form)) repl-env env form repl-options)
                              nil)
-                         (eval-cljs repl-env env form)))]
+                         (eval-cljs repl-env env form repl-options)))]
           (.flush ^Writer *out*)
           (.flush ^Writer *err*)
           (when (and

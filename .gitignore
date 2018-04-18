@@ -12,7 +12,8 @@ pom.xml.asc
 .classpath
 .project
 .settings
-
+.repl
+.lein-repl-history
 .externalToolBuilders
 .cljs_*
 nashorn*
