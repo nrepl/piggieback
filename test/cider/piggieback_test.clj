@@ -98,6 +98,4 @@
   ;; verifying that this doesn't throw
   (is (= [""] (-> (nrepl/message *session* {:op "eval" :code "(require 'hello-world.foo :reload)" :ns "foo.bar"})
                   nrepl/combine-responses
-                  :value)))
-  
-  )
+                  :value))))
