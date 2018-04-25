@@ -12,7 +12,7 @@ use of a ClojureScript REPL on top of an nREPL session.
 Two reasons:
 
 * The default ClojureScript REPL (as described in the
-["quick start"](https://github.com/clojure/clojurescript/wiki/Quick-Start)
+["quick start"](https://clojurescript.org/guides/quick-start)
 tutorial) assumes that it is running in a teletype environment. This works fine
 with nREPL tools in that environment (e.g. `lein repl` in `Terminal.app` or
 `gnome-terminal`, etc), but isn't suitable for development environments that
@@ -103,9 +103,7 @@ See how the REPL prompt changed after invoking
 `cider.piggieback/cljs-repl`? After that point, all expressions sent to the
 REPL are evaluated within the ClojureScript environment.
 `cider.piggieback/cljs-repl`'s passes along all of its options to
-`cljs.repl/repl`, so all of the tutorials and documentation related to it hold
-(including the
-[ClojureScript Quick Start tutorial](https://github.com/clojure/clojurescript/wiki/Quick-Start)).
+`cljs.repl/repl`, so all of the tutorials and documentation related to it hold.
 
 *Important Notes*
 
@@ -140,8 +138,8 @@ cljs.user=> (<3 "nREPL still" "ClojureScript")
 Piggieback works well with all known ClojureScript REPL environments, including
 Nashorn, Node, and browser REPLs.
 
-Support for Rhino was dropped in version 0.3. All users of Rhino are
-advised to switch to using Nashorn instead.
+*Support for Rhino was dropped in version 0.3. All users of Rhino are
+advised to switch to using Nashorn instead.*
 
 ## Acknowledgements
 
