@@ -95,6 +95,10 @@
   ;; environment after each eval
   (try
     (let [repl-opts (cljs.repl/-repl-options repl-env)
+          ;; have to initialise repl-options the same way they
+          ;; are initilized inside of the cljs.repl/repl loop
+          ;; because we are calling evaluate outside of the repl
+          ;; loop.
           opts (merge
                 {:def-emits-var true}
                 (cljs.closure/add-implicit-options
