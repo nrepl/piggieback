@@ -123,13 +123,12 @@
                     (java.io.StringReader. form-str))))))
 
 (defn eval-cljs [repl-env env form opts]
-  (let [res (cljs.repl/evaluate-form repl-env
-                                     env
-                                     "<cljs repl>"
-                                     form
-                                     (#'cljs.repl/wrap-fn form)
-                                     opts)]
-    res))
+  (cljs.repl/evaluate-form repl-env
+                           env
+                           "<cljs repl>"
+                           form
+                           ((:wrap opts #'cljs.repl/wrap-fn) form)
+                           opts))
 
 (defn do-eval [{:keys [session transport ^String code ns] :as msg}]
   (binding [*out* (@session #'*out*)
