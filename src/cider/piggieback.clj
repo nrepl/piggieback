@@ -36,51 +36,24 @@
                                                          :root-ex (-> root-ex class str)}))
       ((:caught repl-options cljs.repl/repl-caught) err repl-env repl-options))))
 
-;; actually running the REPLs
-
 (defn- run-cljs-repl [{:keys [session transport ns] :as nrepl-msg}
                       code repl-env compiler-env options]
   (let [initns (if ns (symbol ns) (@session #'ana/*cljs-ns*))
-        repl cljs.repl/repl*
-        flush (fn []
-                (.flush ^Writer (@session #'*out*))
-                (.flush ^Writer (@session #'*err*)))]
-    ;; do we care about line numbers in the REPL?
-    (binding [*in* (-> (str code " :cljs/quit") StringReader. LineNumberingPushbackReader.)
-              *out* (@session #'*out*)
-              *err* (@session #'*err*)
-              ana/*cljs-ns* initns]
-      (repl repl-env
-            (merge
-             {:need-prompt (constantly false)
-              :init (fn [])
-              :prompt (fn [])
-              :bind-err false
-              :quit-prompt (fn [])
-              :compiler-env compiler-env
-              :flush flush
-              :print (fn [result & rest]
-                       ;; make sure that all *printed* output is flushed before sending results of evaluation
-                       (flush)
-                       (when (or (not ns)
-                                 (not= initns ana/*cljs-ns*))
-                         (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
-                       (if (::first-cljs-repl nrepl-msg)
-                         ;; the first run through the cljs REPL is effectively part
-                         ;; of setup; loading core, (ns cljs.user ...), etc, should
-                         ;; not yield a value. But, we do capture the compiler
-                         ;; environment now (instead of attempting to create one to
-                         ;; begin with, because we can't reliably replicate what
-                         ;; cljs.repl/repl* does in terms of options munging
-                         (set! *cljs-compiler-env* env/*compiler*)
-                         ;; if the CLJS evaluated result is nil, then we can assume
-                         ;; what was evaluated was a cljs.repl special fn (e.g. in-ns,
-                         ;; require, etc)
-                         (transport/send transport (response-for nrepl-msg
-                                                                 {:value (or result "nil")
-                                                                  :printed-value 1
-                                                                  :ns (@session #'ana/*cljs-ns*)}))))}
-             options)))))
+        repl cljs.repl/repl*]
+    (binding [ana/*cljs-ns* initns]
+      (with-in-str (str code " :cljs/quit")
+        (repl repl-env
+              {:need-prompt (constantly false)
+               :init (fn [])
+               :prompt (fn [])
+               :bind-err false
+               :quit-prompt (fn [])
+               :compiler-env compiler-env
+               :print (fn [result & rest]
+                        (when (or (not ns)
+                                  (not= initns ana/*cljs-ns*))
+                          (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
+                        (set! *cljs-compiler-env* env/*compiler*))})))))
 
 ;; This function always executes when the nREPL session is evaluating Clojure,
 ;; via interruptible-eval, etc. This means our dynamic environment is in place,
@@ -106,6 +79,7 @@
       (set! ana/*cljs-ns* 'cljs.user)
       ;; this will implicitly set! *cljs-compiler-env*
       (run-cljs-repl (assoc ieval/*msg* ::first-cljs-repl true)
+                     ;; TODO this needs to be looked at
                      (nrepl/code (ns cljs.user
                                    (:require [cljs.repl :refer-macros (source doc find-doc
                                                                               apropos dir pst)])))
