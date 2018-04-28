@@ -34,7 +34,7 @@
       (transport/send transport (response-for nrepl-msg {:status :eval-error
                                                          :ex (-> err class str)
                                                          :root-ex (-> root-ex class str)}))
-      (cljs.repl/repl-caught err repl-env repl-options))))
+      ((:caught repl-options cljs.repl/repl-caught) err repl-env repl-options))))
 
 ;; actually running the REPLs
 
@@ -79,8 +79,7 @@
                          (transport/send transport (response-for nrepl-msg
                                                                  {:value (or result "nil")
                                                                   :printed-value 1
-                                                                  :ns (@session #'ana/*cljs-ns*)}))))
-              :caught (partial repl-caught session transport nrepl-msg)}
+                                                                  :ns (@session #'ana/*cljs-ns*)}))))}
              options)))))
 
 ;; This function always executes when the nREPL session is evaluating Clojure,
