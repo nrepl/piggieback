@@ -25,6 +25,7 @@
 (def ^:private ^:dynamic *cljs-repl-env* nil)
 (def ^:private ^:dynamic *cljs-compiler-env* nil)
 (def ^:private ^:dynamic *cljs-repl-options* nil)
+(def ^:private ^:dynamic *cljs-warning-handlers* nil)
 (def ^:private ^:dynamic *original-clj-ns* nil)
 
 (defn repl-caught [session transport nrepl-msg err repl-env repl-options]
@@ -89,6 +90,7 @@
       (set! *cljs-repl-options* opts)
       ;; interruptible-eval is in charge of emitting the final :ns response in this context
       (set! *original-clj-ns* *ns*)
+      (set! *cljs-warning-handlers* cljs.analyzer/*cljs-warning-handlers*)
       (set! *ns* (find-ns ana/*cljs-ns*))
       (println "To quit, type:" :cljs/quit))
     (catch Exception e
@@ -133,7 +135,9 @@
   (binding [*out* (@session #'*out*)
             *err* (@session #'*err*)
             ana/*cljs-ns* (if ns (symbol ns) (@session #'ana/*cljs-ns*))
-            env/*compiler* (@session #'*cljs-compiler-env*)]
+            env/*compiler* (@session #'*cljs-compiler-env*)
+            cljs.analyzer/*cljs-warning-handlers*
+            (@session #'*cljs-warning-handlers* cljs.analyzer/*cljs-warning-handlers*)]
     (let [repl-env (@session #'*cljs-repl-env*)
           repl-options (@session #'*cljs-repl-options*)
           init-ns ana/*cljs-ns*
@@ -205,6 +209,7 @@
         (swap! session (partial merge {#'*cljs-repl-env* *cljs-repl-env*
                                        #'*cljs-compiler-env* *cljs-compiler-env*
                                        #'*cljs-repl-options* *cljs-repl-options*
+                                       #'*cljs-warning-handlers* *cljs-warning-handlers* 
                                        #'*original-clj-ns* *original-clj-ns*
                                        #'ana/*cljs-ns* ana/*cljs-ns*})))
       (handler msg))))
