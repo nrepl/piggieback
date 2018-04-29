@@ -14,9 +14,7 @@
             [clojure.string :as string]
             [clojure.tools.reader :as reader]
             [clojure.tools.reader.reader-types :as readers])
-  (:import (org.mozilla.javascript Context ScriptableObject)
-           clojure.lang.LineNumberingPushbackReader
-           java.io.StringReader
+  (:import java.io.StringReader
            java.io.Writer)
   (:refer-clojure :exclude (load-file)))
 
