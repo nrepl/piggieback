@@ -208,7 +208,7 @@
         (swap! session (partial merge {#'*cljs-repl-env* *cljs-repl-env*
                                        #'*cljs-compiler-env* *cljs-compiler-env*
                                        #'*cljs-repl-options* *cljs-repl-options*
-                                       #'*cljs-warning-handlers* *cljs-warning-handlers* 
+                                       #'*cljs-warning-handlers* *cljs-warning-handlers*
                                        #'*original-clj-ns* *original-clj-ns*
                                        #'ana/*cljs-ns* ana/*cljs-ns*})))
       (handler msg))))
@@ -218,4 +218,3 @@
                   ;; piggieback unconditionally hijacks eval and load-file
                   :expects #{"eval" "load-file"}
                   :handles {}})
-
