@@ -18,7 +18,11 @@
   (do (require 'cljs.repl.nashorn)
       (nrepl/code
        (cider.piggieback/cljs-repl
-        (cljs.repl.nashorn/repl-env)))))
+        (cljs.repl.nashorn/repl-env))))
+  #_(do (require 'cljs.repl.node)
+        (nrepl/code
+         (cider.piggieback/cljs-repl
+          (cljs.repl.node/repl-env)))))
 
 (defmacro eastwood-ignore-unused-ret
   "Use this macro to mark evaluations that intentionally throw away
@@ -60,6 +64,7 @@
   (is (= [1 2 3] (->> {:op "eval" :code "(x)"} (nrepl/message *session*) nrepl/response-values first))))
 
 (deftest printing-works
+  ;; doesn't work on node I'm assuming this is because of message ordering
   (is (= {:value ["nil"] :out "[1 2 3 4]\n"}
          (-> (nrepl/message *session* {:op "eval" :code "(println [1 2 3 4])"})
              nrepl/combine-responses
@@ -96,6 +101,6 @@
                        nrepl/combine-responses
                        :ns)))
   ;; verifying that this doesn't throw
-  (is (= [""] (-> (nrepl/message *session* {:op "eval" :code "(require 'hello-world.foo :reload)" :ns "foo.bar"})
-                  nrepl/combine-responses
-                  :value))))
+  (is (-> (nrepl/message *session* {:op "eval" :code "(require 'hello-world.foo :reload)" :ns "foo.bar"})
+          nrepl/combine-responses
+          :value)))

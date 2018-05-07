@@ -39,20 +39,29 @@
                       code repl-env compiler-env options]
   (let [initns (if ns (symbol ns) (@session #'ana/*cljs-ns*))
         repl cljs.repl/repl*]
-    (binding [ana/*cljs-ns* initns]
+    (binding [ana/*cljs-ns* initns
+              *out* (@session #'*out*)
+              *err* (@session #'*err*)]
       (with-in-str (str code " :cljs/quit")
-        (repl repl-env
-              {:need-prompt (constantly false)
-               :init (fn [])
-               :prompt (fn [])
-               :bind-err false
-               :quit-prompt (fn [])
-               :compiler-env compiler-env
-               :print (fn [result & rest]
-                        (when (or (not ns)
-                                  (not= initns ana/*cljs-ns*))
-                          (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
-                        (set! *cljs-compiler-env* env/*compiler*))})))))
+        (try
+          (repl repl-env
+                {;; doing this to avoid call to tear-down HACK!!!
+                 :need-prompt (fn [] (throw
+                                      (ex-info "Shortcutting REPL teardown"
+                                               {::shortcut true})))
+                 :init (fn [])
+                 :prompt (fn [])
+                 :bind-err false
+                 :quit-prompt (fn [])
+                 :compiler-env compiler-env
+                 :print (fn [result & rest]
+                          (when (or (not ns)
+                                    (not= initns ana/*cljs-ns*))
+                            (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
+                          (set! *cljs-compiler-env* env/*compiler*))})
+          (catch clojure.lang.ExceptionInfo e
+            (when-not (-> e ex-data ::shortcut)
+              (throw e))))))))
 
 ;; This function always executes when the nREPL session is evaluating Clojure,
 ;; via interruptible-eval, etc. This means our dynamic environment is in place,
