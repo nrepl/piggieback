@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## `0.3.2`
+
+* Enable `:wrap` repl-option.
+* Enable `:caught` repl-option.
+* Capture `cljs-warning-handlers` so consumers can bind them.
+
 ## `0.3.1`
 
 * [#87](https://github.com/clojure-emacs/piggieback/issues/87): Fix a Nashorn regression introduced in 0.2.3.
