@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `0.3.3`
+
+* Fix REPL teardown problem and bind *out* and *err* for initialization (this affected the node repl).
+
 ## `0.3.2`
 
 * Enable `:wrap` repl-option.
