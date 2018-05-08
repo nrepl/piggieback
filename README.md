@@ -155,7 +155,7 @@ have questions or would like to contribute patches.
 
 ## License
 
-Copyright © 2012-2018 Chas Emerick and other contributors.
+Copyright © 2012-2018 Chas Emerick, Bruce Hauman, Bozhidar Batsov and other contributors.
 
 Distributed under the Eclipse Public License, the same as Clojure.
 
