@@ -133,7 +133,7 @@
   "Starts a ClojureScript REPL over top an nREPL session.  Accepts
    all options usually accepted by e.g. cljs.repl/repl."
   [repl-env & {:as options}]
-  ;; TODO I think we need a var to set! the compiler environment from the REPL
+  ;; TODO: I think we need a var to set! the compiler environment from the REPL
   ;; environment after each eval
   (try
     (let [repl-opts (cljs.repl/-repl-options repl-env)
@@ -150,7 +150,7 @@
       (set! ana/*cljs-ns* 'cljs.user)
       ;; this will implicitly set! *cljs-compiler-env*
       (run-cljs-repl (assoc ieval/*msg* ::first-cljs-repl true)
-                     ;; TODO this needs to be looked at
+                     ;; TODO: This needs to be looked at
                      (nrepl/code (ns cljs.user
                                    (:require [cljs.repl :refer-macros (source doc find-doc
                                                                               apropos dir pst)])))
@@ -263,7 +263,7 @@
 ;; Clojure). This is necessitated by the expectation of cljs.repl/load-file that
 ;; the file being loaded is on disk, in the location implied by the namespace
 ;; declaration.
-;; TODO either pull in our own `load-file` that doesn't imply this, or raise the issue upstream.
+;; TODO: Either pull in our own `load-file` that doesn't imply this, or raise the issue upstream.
 (defn- load-file [{:keys [session transport file-path] :as msg}]
   (evaluate (assoc msg :code (format "(load-file %s)" (pr-str file-path)))))
 
