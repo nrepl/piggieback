@@ -26,6 +26,68 @@
 (def ^:private ^:dynamic *cljs-warning-handlers* nil)
 (def ^:private ^:dynamic *original-clj-ns* nil)
 
+;; ---------------------------------------------------------------------------
+;; Delegating Repl Env
+;; ---------------------------------------------------------------------------
+
+;; We have to create a delegating ReplEnv to prevent the call to -tear-down
+;; this could be avoided if we could override -tear-down only
+
+(def ^:private cljs-repl-protocol-impls
+  {cljs.repl/IReplEnvOptions
+   {:-repl-options (fn [repl-env] (cljs.repl/-repl-options (.-repl-env repl-env)))}
+   cljs.repl/IParseError
+   {:-parse-error (fn [repl-env err build-options]
+                    (cljs.repl/-parse-error (.-repl-env repl-env) err build-options))}
+   cljs.repl/IGetError
+   {:-get-error (fn [repl-env name env build-options]
+                  (cljs.repl/-get-error (.-repl-env repl-env) name env build-options))}
+   cljs.repl/IParseStacktrace
+   {:-parse-stacktrace (fn [repl-env stacktrace err build-options]
+                         (cljs.repl/-parse-stacktrace (.-repl-env repl-env) stacktrace err build-options))}
+   cljs.repl/IPrintStacktrace
+   {:-print-stacktrace (fn [repl-env stacktrace err build-options]
+                         (cljs.repl/-print-stacktrace (.-repl-env repl-env) stacktrace err build-options))}})
+
+(defn- generate-delegating-repl-env [repl-env]
+  (let [repl-env-class (class repl-env)
+        classname (.replace (.getName repl-env-class) \. \_)
+        dclassname (str "Delegating" classname)]
+    (eval
+      (list* 'deftype (symbol dclassname)
+        '([repl-env]
+           cljs.repl/IJavaScriptEnv
+           (-setup [this options] (cljs.repl/-setup repl-env options))
+           (-evaluate [this a b c] (cljs.repl/-evaluate repl-env a b c))
+           (-load [this ns url] (cljs.repl/-load repl-env ns url))
+           (-tear-down [_])
+           clojure.lang.ILookup
+           (valAt [_ k] (get repl-env k))
+           (valAt [_ k default] (get repl-env k default))
+           clojure.lang.Seqable
+           (seq [_] (seq repl-env))
+           clojure.lang.Associative
+           (containsKey [_ k] (contains? repl-env k))
+           (entryAt [_ k] (find repl-env k))
+           (assoc [_ k v] (#'cider.piggieback/delegating-repl-env (assoc repl-env k v)))
+           clojure.lang.IPersistentCollection
+           (count [_] (count repl-env))
+           (cons [_ entry] (conj repl-env entry))
+           ; pretty meaningless; most REPL envs are records for the assoc'ing, but they're not values
+           (equiv [_ other] false))))
+    (let [dclass (resolve (symbol dclassname))
+          ctor (resolve (symbol (str "->" dclassname)))]
+      (doseq [[protocol fn-map] cljs-repl-protocol-impls]
+        (when (satisfies? protocol repl-env)
+          (extend dclass protocol fn-map)))
+      @ctor)))
+
+(defn- delegating-repl-env [repl-env]
+  (let [ctor (generate-delegating-repl-env repl-env)]
+    (ctor repl-env)))
+
+;; ---------------------------------------------------------------------------
+
 (defn repl-caught [session transport nrepl-msg err repl-env repl-options]
   (let [root-ex (#'clojure.main/root-cause err)]
     (when-not (instance? ThreadDeath root-ex)
@@ -45,10 +107,8 @@
       (with-in-str (str code " :cljs/quit")
         (try
           (repl repl-env
-                {;; doing this to avoid call to tear-down HACK!!!
-                 :need-prompt (fn [] (throw
-                                      (ex-info "Shortcutting REPL teardown"
-                                               {::shortcut true})))
+                {
+                 :need-prompt (fn [])
                  :init (fn [])
                  :prompt (fn [])
                  :bind-err false
@@ -75,6 +135,7 @@
   ;; environment after each eval
   (try
     (let [repl-opts (cljs.repl/-repl-options repl-env)
+          repl-env (delegating-repl-env repl-env)
           ;; have to initialise repl-options the same way they
           ;; are initilized inside of the cljs.repl/repl loop
           ;; because we are calling evaluate outside of the repl
@@ -180,7 +241,7 @@
 (defn- evaluate [{:keys [session transport ^String code] :as msg}]
   (if-not (.. code trim (endsWith ":cljs/quit"))
     (do-eval msg)
-    (let [actual-repl-env (@session #'*cljs-repl-env*)]
+    (let [actual-repl-env (.-repl-env (@session #'*cljs-repl-env*))]
       (cljs.repl/-tear-down actual-repl-env)
       (swap! session assoc
              #'*ns* (@session #'*original-clj-ns*)
