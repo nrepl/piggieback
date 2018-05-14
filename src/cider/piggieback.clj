@@ -60,6 +60,8 @@
            (-setup [this options] (cljs.repl/-setup repl-env options))
            (-evaluate [this a b c] (cljs.repl/-evaluate repl-env a b c))
            (-load [this ns url] (cljs.repl/-load repl-env ns url))
+           ;; This is the whole reason we are creating this delegator
+           ;; to prevent the call to tear-down
            (-tear-down [_])
            clojure.lang.ILookup
            (valAt [_ k] (get repl-env k))
