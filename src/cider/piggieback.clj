@@ -54,29 +54,30 @@
         classname (.replace (.getName repl-env-class) \. \_)
         dclassname (str "Delegating" classname)]
     (eval
-      (list* 'deftype (symbol dclassname)
-        '([repl-env]
-           cljs.repl/IJavaScriptEnv
-           (-setup [this options] (cljs.repl/-setup repl-env options))
-           (-evaluate [this a b c] (cljs.repl/-evaluate repl-env a b c))
-           (-load [this ns url] (cljs.repl/-load repl-env ns url))
-           ;; This is the whole reason we are creating this delegator
-           ;; to prevent the call to tear-down
-           (-tear-down [_])
-           clojure.lang.ILookup
-           (valAt [_ k] (get repl-env k))
-           (valAt [_ k default] (get repl-env k default))
-           clojure.lang.Seqable
-           (seq [_] (seq repl-env))
-           clojure.lang.Associative
-           (containsKey [_ k] (contains? repl-env k))
-           (entryAt [_ k] (find repl-env k))
-           (assoc [_ k v] (#'cider.piggieback/delegating-repl-env (assoc repl-env k v)))
-           clojure.lang.IPersistentCollection
-           (count [_] (count repl-env))
-           (cons [_ entry] (conj repl-env entry))
-           ; pretty meaningless; most REPL envs are records for the assoc'ing, but they're not values
-           (equiv [_ other] false))))
+     (list*
+      'deftype (symbol dclassname)
+      '([repl-env]
+        cljs.repl/IJavaScriptEnv
+        (-setup [this options] (cljs.repl/-setup repl-env options))
+        (-evaluate [this a b c] (cljs.repl/-evaluate repl-env a b c))
+        (-load [this ns url] (cljs.repl/-load repl-env ns url))
+        ;; This is the whole reason we are creating this delegator
+        ;; to prevent the call to tear-down
+        (-tear-down [_])
+        clojure.lang.ILookup
+        (valAt [_ k] (get repl-env k))
+        (valAt [_ k default] (get repl-env k default))
+        clojure.lang.Seqable
+        (seq [_] (seq repl-env))
+        clojure.lang.Associative
+        (containsKey [_ k] (contains? repl-env k))
+        (entryAt [_ k] (find repl-env k))
+        (assoc [_ k v] (#'cider.piggieback/delegating-repl-env (assoc repl-env k v)))
+        clojure.lang.IPersistentCollection
+        (count [_] (count repl-env))
+        (cons [_ entry] (conj repl-env entry))
+        ;; pretty meaningless; most REPL envs are records for the assoc'ing, but they're not values
+        (equiv [_ other] false))))
     (let [dclass (resolve (symbol dclassname))
           ctor (resolve (symbol (str "->" dclassname)))]
       (doseq [[protocol fn-map] cljs-repl-protocol-impls]
@@ -109,8 +110,7 @@
       (with-in-str (str code " :cljs/quit")
         (try
           (repl repl-env
-                {
-                 :need-prompt (fn [])
+                {:need-prompt (fn [])
                  :init (fn [])
                  :prompt (fn [])
                  :bind-err false
