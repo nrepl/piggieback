@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `0.3.4`
+
+* Fix REPL teardown problem with ClojureScript 1.10.
+
 ## `0.3.3`
 
 * Fix REPL teardown problem and bind *out* and *err* for initialization (this affected the node repl).
