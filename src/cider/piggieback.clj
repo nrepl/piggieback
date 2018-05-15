@@ -110,17 +110,19 @@
       (with-in-str (str code " :cljs/quit")
         (try
           (repl repl-env
-                {:need-prompt (fn [])
-                 :init (fn [])
-                 :prompt (fn [])
-                 :bind-err false
-                 :quit-prompt (fn [])
-                 :compiler-env compiler-env
-                 :print (fn [result & rest]
-                          (when (or (not ns)
-                                    (not= initns ana/*cljs-ns*))
-                            (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
-                          (set! *cljs-compiler-env* env/*compiler*))})
+                (merge
+                 {:need-prompt (fn [])
+                  :init (fn [])
+                  :prompt (fn [])
+                  :bind-err false
+                  :quit-prompt (fn [])
+                  :compiler-env compiler-env
+                  :print (fn [result & rest]
+                           (when (or (not ns)
+                                     (not= initns ana/*cljs-ns*))
+                             (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
+                           (set! *cljs-compiler-env* env/*compiler*))}
+                 (select-keys options [:compiler-env])))
           (catch clojure.lang.ExceptionInfo e
             (when-not (-> e ex-data ::shortcut)
               (throw e))))))))
