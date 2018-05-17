@@ -1,5 +1,5 @@
-[![Build Status](https://travis-ci.org/clojure-emacs/piggieback.png?branch=master)](http://travis-ci.org/clojure-emacs/piggieback)
-[![codecov](https://codecov.io/gh/clojure-emacs/orchard/branch/master/graph/badge.svg)](https://codecov.io/gh/clojure-emacs/piggieback)
+[![Build Status](https://travis-ci.org/nrepl/piggieback.png?branch=master)](http://travis-ci.org/nrepl/piggieback)
+[![codecov](https://codecov.io/gh/nrepl/piggieback/branch/master/graph/badge.svg)](https://codecov.io/gh/nrepl/piggieback)
 [![Clojars Project](https://img.shields.io/clojars/v/cider/piggieback.svg)](https://clojars.org/cider/piggieback)
 
 # Piggieback

@@ -16,7 +16,7 @@
 
 ## `0.3.1`
 
-* [#87](https://github.com/clojure-emacs/piggieback/issues/87): Fix a Nashorn regression introduced in 0.2.3.
+* [#87](https://github.com/nrepl/piggieback/issues/87): Fix a Nashorn regression introduced in 0.2.3.
 
 ## `0.3.0`
 
@@ -27,7 +27,7 @@
 
 * Changed the artefact coordinates to `cider/piggieback`. It's now being deployed
 to Clojars, instead of to Maven Central.
-* [#80](https://github.com/clojure-emacs/piggieback/pull/80): Make eval just eval, instead of creating a new REPL for each evaluation.
+* [#80](https://github.com/nrepl/piggieback/pull/80): Make eval just eval, instead of creating a new REPL for each evaluation.
 * Piggieback now requires ClojureScript 1.9 and Java 8.
 
 ## `0.2.2`
