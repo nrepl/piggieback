@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `0.3.5`
+
+* Fix loss of `compiler-env`.
+
 ## `0.3.4`
 
 * Fix REPL teardown problem with ClojureScript 1.10.
