@@ -51,7 +51,7 @@
 
 (defn- generate-delegating-repl-env [repl-env]
   (let [repl-env-class (class repl-env)
-        classname (.replace (.getName repl-env-class) \. \_)
+        classname (string/replace (.getName repl-env-class) \. \_)
         dclassname (str "Delegating" classname)]
     (eval
      (list*
@@ -243,7 +243,7 @@
 ;; Clojure session (dynamic environment) is not in place, so we need to go
 ;; through the `session` atom to access/update its vars. Same goes for load-file.
 (defn- evaluate [{:keys [session transport ^String code] :as msg}]
-  (if-not (.. code trim (endsWith ":cljs/quit"))
+  (if-not (-> code string/trim (string/ends-with? ":cljs/quit"))
     (do-eval msg)
     (let [actual-repl-env (.-repl-env (@session #'*cljs-repl-env*))]
       (cljs.repl/-tear-down actual-repl-env)
