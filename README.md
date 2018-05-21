@@ -4,7 +4,7 @@
 
 # Piggieback
 
-[nREPL](http://github.com/clojure/tools.nrepl) middleware that enables the
+[nREPL](http://github.com/nrepl/nrepl) middleware that enables the
 use of a ClojureScript REPL on top of an nREPL session.
 
 ## Why?
