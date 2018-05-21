@@ -3,7 +3,7 @@
   {:author "Chas Emerick"}
   (:require [clojure.tools.nrepl :as nrepl]
             (clojure.tools.nrepl [transport :as transport]
-                                 [misc :refer (response-for returning)]
+                                 [misc :refer (response-for)]
                                  [middleware :refer (set-descriptor!)])
             [clojure.tools.nrepl.middleware.interruptible-eval :as ieval]
             [clojure.java.io :as io]
