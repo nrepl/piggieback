@@ -108,24 +108,23 @@
               *out* (@session #'*out*)
               *err* (@session #'*err*)]
       (with-in-str (str code " :cljs/quit")
-        (try
-          (repl repl-env
-                (merge
-                 {:need-prompt (fn [])
-                  :init (fn [])
-                  :prompt (fn [])
-                  :bind-err false
-                  :quit-prompt (fn [])
-                  :compiler-env compiler-env
-                  :print (fn [result & rest]
-                           (when (or (not ns)
-                                     (not= initns ana/*cljs-ns*))
-                             (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
-                           (set! *cljs-compiler-env* env/*compiler*))}
-                 (select-keys options [:compiler-env])))
-          (catch clojure.lang.ExceptionInfo e
-            (when-not (-> e ex-data ::shortcut)
-              (throw e))))))))
+        (repl repl-env
+              (merge
+               {:compiler-env compiler-env}
+               ;; if options has a compiler env let it override
+               options
+               ;; these options need to be set to the following values
+               ;; for the repl to initialize correctly
+               {:need-prompt (fn [])
+                :init (fn [])
+                :prompt (fn [])
+                :bind-err false
+                :quit-prompt (fn [])
+                :print (fn [result & rest]
+                         (when (or (not ns)
+                                   (not= initns ana/*cljs-ns*))
+                           (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
+                         (set! *cljs-compiler-env* env/*compiler*))}))))))
 
 ;; This function always executes when the nREPL session is evaluating Clojure,
 ;; via interruptible-eval, etc. This means our dynamic environment is in place,
