@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `0.3.6`
+
+* Allow repl-options to flow through.
+
 ## `0.3.5`
 
 * Fix loss of `compiler-env`.
