@@ -86,6 +86,8 @@ nREPL handler.  Keep two things in mind when doing so:
 ```
 $ lein repl
 ....
+user=> (require 'cljs.repl.nashorn)
+nil
 user=> (cider.piggieback/cljs-repl (cljs.repl.nashorn/repl-env))
 To quit, type: :cljs/quit
 nil
