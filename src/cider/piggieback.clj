@@ -1,12 +1,7 @@
 (ns cider.piggieback
   "nREPL middleware enabling the transparent use of a ClojureScript REPL with nREPL tooling."
   {:author "Chas Emerick"}
-  (:require [clojure.tools.nrepl :as nrepl]
-            (clojure.tools.nrepl [transport :as transport]
-                                 [misc :refer (response-for)]
-                                 [middleware :refer (set-descriptor!)])
-            [clojure.tools.nrepl.middleware.interruptible-eval :as ieval]
-            [clojure.java.io :as io]
+  (:require [clojure.java.io :as io]
             cljs.repl
             [cljs.env :as env]
             [cljs.analyzer :as ana]
@@ -17,6 +12,23 @@
   (:import java.io.StringReader
            java.io.Writer)
   (:refer-clojure :exclude (load-file)))
+
+;; Compatibility with the legacy tools.nrepl and the new nREPL 0.4.x.
+;; The assumption is that if someone is using old lein repl or boot repl
+;; they'll end up using the tools.nrepl, otherwise the modern one.
+(if (find-ns 'clojure.tool.nrepl)
+  (require
+   '[clojure.tools.nrepl :as nrepl]
+   '[clojure.tools.nrepl.middleware :as middleware :refer (set-descriptor!)]
+   '[clojure.tools.nrepl.middleware.interruptible-eval :as ieval]
+   '[clojure.tools.nrepl.misc :as misc :refer (response-for)]
+   '[clojure.tools.nrepl.transport :as transport])
+  (require
+   '[nrepl.core :as nrepl]
+   '[nrepl.middleware :as middleware :refer (set-descriptor!)]
+   '[nrepl.middleware.interruptible-eval :as ieval]
+   '[nrepl.misc :as misc :refer (response-for)]
+   '[nrepl.transport :as transport]))
 
 ;; this is the var that is checked by the middleware to determine whether an
 ;; active CLJS REPL is in flight

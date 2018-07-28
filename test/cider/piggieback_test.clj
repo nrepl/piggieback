@@ -1,7 +1,7 @@
 (ns cider.piggieback-test
   (:require [cider.piggieback :as pb]
-            [clojure.tools.nrepl :as nrepl]
-            (clojure.tools.nrepl [server :as server]))
+            [nrepl.core :as nrepl]
+            [nrepl.server :as server])
   (:use clojure.test))
 
 (def ^:dynamic *server-port* nil)
@@ -35,7 +35,7 @@
   (with-open [server (server/start-server
                       :bind "127.0.0.1"
                       :handler (server/default-handler #'cider.piggieback/wrap-cljs-repl))]
-    (let [port (.getLocalPort (:ss @server))
+    (let [port (.getLocalPort (:server-socket server))
           conn (nrepl/connect :port port)
           session (nrepl/client-session (nrepl/client conn Long/MAX_VALUE))]
       ;; need to let the dynamic bindings get in place before trying to eval anything that
