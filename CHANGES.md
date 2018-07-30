@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `0.3.7`
+
+* Add compatibility with nREPL 0.4+.
+
 ## `0.3.6`
 
 * Allow repl-options to flow through.

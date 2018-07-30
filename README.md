@@ -42,7 +42,7 @@ Modify your `project.clj` to include the following `:dependencies` and
 `:repl-options`:
 
 ```clojure
-:profiles {:dev {:dependencies [[cider/piggieback "0.3.6"]
+:profiles {:dev {:dependencies [[cider/piggieback "0.3.7"]
                                 [org.clojure/tools.nrepl "0.2.13"]]
                  :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}
 ```
