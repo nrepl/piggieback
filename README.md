@@ -45,15 +45,12 @@ Modify your `project.clj` to include the following `:dependencies` and
 `:repl-options`:
 
 ```clojure
-:profiles {:dev {:dependencies [[cider/piggieback "0.3.8"]
-                                [org.clojure/tools.nrepl "0.2.13"]]
+:profiles {:dev {:dependencies [[cider/piggieback "0.3.8"]]
                  :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}
 ```
 
 The `:repl-options` bit causes `lein repl` to automagically mix the Piggieback
-nREPL middleware into its default stack. (Yes, you need to explicitly declare a
-local nREPL dependency to use piggieback, due to a
-[Leiningen bug](https://github.com/technomancy/leiningen/issues/1771).)
+nREPL middleware into its default stack.
 
 _If you're using Leiningen directly, or as the basis for the REPLs in your local
 development environment (e.g. CIDER, fireplace, counterclockwise, etc), you're
