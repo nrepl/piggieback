@@ -38,6 +38,9 @@ straightforward.
 Piggieback is compatible with Clojure 1.8.0+, and _requires_ ClojureScript
 `1.9` or later and nREPL `0.2.10` or later.
 
+**Please, note that Piggieback 0.3.7 is the first version compatible
+with nREPL 0.4+.**
+
 Modify your `project.clj` to include the following `:dependencies` and
 `:repl-options`:
 
