@@ -32,14 +32,16 @@ original state.
 
 ## Installation
 
-These instructions are for Leiningen. Translating them for use in boot should be
-straightforward.
-
 Piggieback is compatible with Clojure 1.8.0+, and _requires_ ClojureScript
 `1.9` or later and nREPL `0.2.10` or later.
 
 **Please, note that Piggieback 0.3.7 is the first version compatible
 with nREPL 0.4+.**
+
+### Leiningen
+
+These instructions are for Leiningen. Translating them for use in boot should be
+straightforward.
 
 Modify your `project.clj` to include the following `:dependencies` and
 `:repl-options`:
@@ -56,13 +58,44 @@ _If you're using Leiningen directly, or as the basis for the REPLs in your local
 development environment (e.g. CIDER, fireplace, counterclockwise, etc), you're
 done._ [Skip to starting a ClojureScript REPL](#usage).
 
-If you're not starting nREPL through Leiningen (e.g. maybe you're starting up
+### Boot
+
+Contributions welcome!
+
+### Clojure CLI (aka `tools.deps`)
+
+**The instructions below require nREPL 0.4.4 or newer**
+
+Add this alias to `~/.clojure/deps.edn`:
+
+``` clojure
+{
+;; ...
+:aliases {:nrepl
+          {:extra-deps
+            {nrepl/nrepl {:mvn/version "0.4.4"}
+             cider/piggieback {:mvn/version "0.3.8"}}}}
+}
+```
+
+Then you can simply run a ClojureScript capable nREPL like this:
+
+``` shell
+clj -R:nrepl -m nrepl.cmdline --middleware "[cider.piggieback/wrap-cljs-repl]"
+```
+
+Afterwards simply connect to the running server with your favourite
+nREPL client (e.g. CIDER).
+
+### Embedded
+
+If you're not starting nREPL through a build tool (e.g. maybe you're starting up
 an nREPL server from within an application), you can achieve the same thing by
 specifying that the `wrap-cljs-repl` middleware be mixed into nREPL's default
 handler:
 
 ```clojure
-(require '[clojure.tools.nrepl.server :as server]
+(require '[nrepl.server :as server]
          '[cider.piggieback :as pback])
 
 (server/start-server
@@ -75,11 +108,12 @@ Alternatively, you can add `wrap-cljs-repl` to your application's hand-tweaked
 nREPL handler.  Keep two things in mind when doing so:
 
 * Piggieback needs to be "above" nREPL's
-  `clojure.tools.nrepl.middleware.interruptible-eval/interruptible-eval`; it
+  `nrepl.middleware.interruptible-eval/interruptible-eval`; it
   doesn't use `interruptible-eval`'s evaluation machinery, but it does reuse its
   execution queue and thus inherits its interrupt capability.
 * Piggieback depends upon persistent REPL sessions, like those provided by
-  `clojure.tools.nrepl.middleware.session/session`.)
+  `nrepl.middleware.session/session`.)
+
 
 ## Usage
 
