@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `0.3.8`
+
+* Fix the `tools.nrepl` support. (a silly typo had broken it)
+
 ## `0.3.7`
 
 * Add compatibility with nREPL 0.4+.

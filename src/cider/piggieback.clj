@@ -16,7 +16,7 @@
 ;; Compatibility with the legacy tools.nrepl and the new nREPL 0.4.x.
 ;; The assumption is that if someone is using old lein repl or boot repl
 ;; they'll end up using the tools.nrepl, otherwise the modern one.
-(if (find-ns 'clojure.tool.nrepl)
+(if (find-ns 'clojure.tools.nrepl)
   (require
    '[clojure.tools.nrepl :as nrepl]
    '[clojure.tools.nrepl.middleware :as middleware :refer (set-descriptor!)]
