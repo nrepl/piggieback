@@ -3,6 +3,7 @@
   :url "http://github.com/nrepl/piggieback"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
+  :scm {:name "git" :url "https://github.com/nrepl/piggieback"}
   :min-lein-version "2.0.0"
   :dependencies [[nrepl/nrepl "0.4.3"]
                  [org.clojure/clojure "1.8.0"]
