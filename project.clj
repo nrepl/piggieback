@@ -5,7 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :scm {:name "git" :url "https://github.com/nrepl/piggieback"}
   :min-lein-version "2.0.0"
-  :dependencies [[nrepl/nrepl "0.4.3"]
+  :dependencies [[nrepl/nrepl "0.4.4"]
                  [org.clojure/clojure "1.8.0"]
                  [org.clojure/clojurescript "1.9.946"]]
 
