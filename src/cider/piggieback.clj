@@ -213,6 +213,14 @@
                            ((:wrap opts #'cljs.repl/wrap-fn) form)
                            opts))
 
+;; making this conditional to allow for older versions of clojurescript that
+;; dont have cljs.repl/*repl-env* yet
+(defmacro conditionally-bind-repl-env [session body]
+  (if (resolve 'cljs.repl/*repl-env*)
+    `(binding [cljs.repl/*repl-env* (get @~session #'*cljs-repl-env*)]
+       ~body)
+    body))
+
 (defn do-eval [{:keys [session transport ^String code ns] :as msg}]
   (binding [*out* (@session #'*out*)
             *err* (@session #'*err*)
@@ -220,34 +228,36 @@
             env/*compiler* (@session #'*cljs-compiler-env*)
             cljs.analyzer/*cljs-warning-handlers*
             (@session #'*cljs-warning-handlers* cljs.analyzer/*cljs-warning-handlers*)]
-    (let [repl-env (@session #'*cljs-repl-env*)
-          repl-options (@session #'*cljs-repl-options*)
-          init-ns ana/*cljs-ns*
-          special-fns (merge cljs.repl/default-special-fns (:special-fns repl-options))
-          is-special-fn? (set (keys special-fns))]
-      (try
-        (let [form (read-cljs-string code)
-              env  (assoc (ana/empty-env) :ns (ana/get-namespace init-ns))
-              result (when form
-                       (if (and (seq? form) (is-special-fn? (first form)))
-                         (do ((get special-fns (first form)) repl-env env form repl-options)
-                             nil)
-                         (eval-cljs repl-env env form repl-options)))]
-          (.flush ^Writer *out*)
-          (.flush ^Writer *err*)
-          (when (and
-                 (or (not ns)
-                     (not= init-ns ana/*cljs-ns*))
-                 ana/*cljs-ns*)
-            (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
-          (transport/send
-           transport
-           (response-for msg
-                         {:value (or result "nil")
-                          :printed-value 1
-                          :ns (@session #'ana/*cljs-ns*)})))
-        (catch Throwable t
-          (repl-caught session transport msg t repl-env repl-options))))))
+    (conditionally-bind-repl-env
+     session
+     (let [repl-env (@session #'*cljs-repl-env*)
+           repl-options (@session #'*cljs-repl-options*)
+           init-ns ana/*cljs-ns*
+           special-fns (merge cljs.repl/default-special-fns (:special-fns repl-options))
+           is-special-fn? (set (keys special-fns))]
+       (try
+         (let [form (read-cljs-string code)
+               env  (assoc (ana/empty-env) :ns (ana/get-namespace init-ns))
+               result (when form
+                        (if (and (seq? form) (is-special-fn? (first form)))
+                          (do ((get special-fns (first form)) repl-env env form repl-options)
+                              nil)
+                          (eval-cljs repl-env env form repl-options)))]
+           (.flush ^Writer *out*)
+           (.flush ^Writer *err*)
+           (when (and
+                  (or (not ns)
+                      (not= init-ns ana/*cljs-ns*))
+                  ana/*cljs-ns*)
+             (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
+           (transport/send
+            transport
+            (response-for msg
+                          {:value (or result "nil")
+                           :printed-value 1
+                           :ns (@session #'ana/*cljs-ns*)})))
+         (catch Throwable t
+           (repl-caught session transport msg t repl-env repl-options)))))))
 
 ;; only executed within the context of an nREPL session having *cljs-repl-env*
 ;; bound. Thus, we're not going through interruptible-eval, and the user's
