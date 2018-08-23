@@ -213,7 +213,7 @@
                            ((:wrap opts #'cljs.repl/wrap-fn) form)
                            opts))
 
-;; making this conditional to allow for older versions of clojurescript that
+;; making this conditional to allow for CLJS versions older than 1.10.126 that
 ;; dont have cljs.repl/*repl-env* yet
 (defmacro conditionally-bind-repl-env [session body]
   (if (resolve 'cljs.repl/*repl-env*)
