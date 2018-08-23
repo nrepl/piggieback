@@ -1,4 +1,4 @@
-(defproject cider/piggieback "0.3.8"
+(defproject cider/piggieback "0.3.9-SNAPSHOT"
   :description "Middleware adding support for running ClojureScript REPLs over nREPL."
   :url "http://github.com/nrepl/piggieback"
   :license {:name "Eclipse Public License"
