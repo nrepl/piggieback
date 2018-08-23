@@ -1,5 +1,6 @@
 (ns user
   (:require
+   [clojure.tools.nrepl]
    [cider.piggieback :as pback]
    [cljs.repl :as repl]
    [cljs.repl.nashorn :as nash]
