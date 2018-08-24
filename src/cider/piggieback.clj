@@ -163,10 +163,12 @@
       (set! ana/*cljs-ns* 'cljs.user)
       ;; this will implicitly set! *cljs-compiler-env*
       (run-cljs-repl (assoc ieval/*msg* ::first-cljs-repl true)
-                     ;; TODO: This needs to be looked at
-                     (nrepl/code (ns cljs.user
-                                   (:require [cljs.repl :refer-macros (source doc find-doc
-                                                                              apropos dir pst)])))
+                     ;; this is needed to respect :repl-requires
+                     (if-let [requires (not-empty (:repl-requires opts))]
+                       (pr-str (cons 'ns `(cljs.user (:require ~@requires))))
+                       (nrepl/code (ns cljs.user
+                                     (:require [cljs.repl :refer-macros [source doc find-doc
+                                                                         apropos dir pst]]))))
                      repl-env nil options)
       ;; (clojure.pprint/pprint (:options @*cljs-compiler-env*))
       (set! *cljs-repl-env* repl-env)
