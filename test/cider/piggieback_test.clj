@@ -1,8 +1,15 @@
 (ns cider.piggieback-test
-  (:require [cider.piggieback :as pb]
-            [nrepl.core :as nrepl]
-            [nrepl.server :as server])
   (:use clojure.test))
+
+(if (find-ns 'clojure.tools.nrepl)
+  (require
+   '[clojure.tools.nrepl :as nrepl]
+   '[clojure.tools.nrepl.server :as server])
+  (require
+   '[nrepl.core :as nrepl]
+   '[nrepl.server :as server]))
+
+(require '[cider.piggieback :as pb])
 
 (def ^:dynamic *server-port* nil)
 (def ^:dynamic *session*)

@@ -1,10 +1,13 @@
 (ns user
   (:require
+   ;; this unfortunately precludes testing against nrepl/nrepl
+   ;; better to have this code as a script to include during development?
    [clojure.tools.nrepl]
-   [cider.piggieback :as pback]
    [cljs.repl :as repl]
    [cljs.repl.nashorn :as nash]
    [cljs.repl.node :as node]))
+
+(require '[cider.piggieback :as pback])
 
 (defn cljs []
   (pback/cljs-repl (nash/repl-env :verbose true :repl-verbose true)))
