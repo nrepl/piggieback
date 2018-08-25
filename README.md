@@ -47,7 +47,7 @@ Modify your `project.clj` to include the following `:dependencies` and
 `:repl-options`:
 
 ```clojure
-:profiles {:dev {:dependencies [[cider/piggieback "0.3.8"]]
+:profiles {:dev {:dependencies [[cider/piggieback "0.3.9"]]
                  :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}
 ```
 
@@ -74,7 +74,7 @@ Add this alias to `~/.clojure/deps.edn`:
 :aliases {:nrepl
           {:extra-deps
             {nrepl/nrepl {:mvn/version "0.4.4"}
-             cider/piggieback {:mvn/version "0.3.8"}}}}
+             cider/piggieback {:mvn/version "0.3.9"}}}}
 }
 ```
 
