@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## `0.3.9`
+
+* honor `:repl-requires` CLJS repl option
+* bind `cljs.repl/*repl-env*` to better support CLJS versions newer than 1.10.126
+
 ## `0.3.8`
 
 * Fix the `tools.nrepl` support. (a silly typo had broken it)
