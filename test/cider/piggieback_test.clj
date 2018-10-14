@@ -111,3 +111,10 @@
   (is (-> (nrepl/message *session* {:op "eval" :code "(require 'hello-world.foo :reload)" :ns "foo.bar"})
           nrepl/combine-responses
           :value)))
+
+(deftest defprotocol-no-throw
+  ;; verifying that this doesn't throw: `defprotocol` depends on a
+  ;; cljs.ananlyzer binding.
+  (is (-> (nrepl/message *session* {:op "eval" :code "(defprotocol Foo [do-a-thing [this]])"})
+          nrepl/combine-responses
+          :value)))
