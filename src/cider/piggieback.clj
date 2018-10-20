@@ -1,17 +1,18 @@
 (ns cider.piggieback
   "nREPL middleware enabling the transparent use of a ClojureScript REPL with nREPL tooling."
   {:author "Chas Emerick"}
-  (:require [clojure.java.io :as io]
-            cljs.repl
-            [cljs.env :as env]
-            [cljs.analyzer :as ana]
-            [cljs.tagged-literals :as tags]
-            [clojure.string :as string]
-            [clojure.tools.reader :as reader]
-            [clojure.tools.reader.reader-types :as readers])
+  (:refer-clojure :exclude (load-file))
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as string]
+   [clojure.tools.reader :as reader]
+   [clojure.tools.reader.reader-types :as readers]
+   cljs.repl
+   [cljs.env :as env]
+   [cljs.analyzer :as ana]
+   [cljs.tagged-literals :as tags])
   (:import java.io.StringReader
-           java.io.Writer)
-  (:refer-clojure :exclude (load-file)))
+           java.io.Writer))
 
 ;; Compatibility with the legacy tools.nrepl and the new nREPL 0.4.x.
 ;; The assumption is that if someone is using old lein repl or boot repl

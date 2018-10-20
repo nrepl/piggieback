@@ -1,5 +1,6 @@
 (ns cider.piggieback-test
-  (:use clojure.test))
+  (:require
+   [clojure.test :refer :all]))
 
 (if (find-ns 'clojure.tools.nrepl)
   (require
