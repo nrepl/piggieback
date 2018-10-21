@@ -36,6 +36,7 @@
 (def ^:private ^:dynamic *cljs-repl-env* nil)
 (def ^:private ^:dynamic *cljs-compiler-env* nil)
 (def ^:private ^:dynamic *cljs-repl-options* nil)
+(def ^:private ^:dynamic *cljs-warnings* nil)
 (def ^:private ^:dynamic *cljs-warning-handlers* nil)
 (def ^:private ^:dynamic *original-clj-ns* nil)
 
@@ -176,6 +177,7 @@
       (set! *cljs-repl-options* opts)
       ;; interruptible-eval is in charge of emitting the final :ns response in this context
       (set! *original-clj-ns* *ns*)
+      (set! *cljs-warnings* cljs.analyzer/*cljs-warnings*)
       (set! *cljs-warning-handlers* cljs.analyzer/*cljs-warning-handlers*)
       (set! *ns* (find-ns ana/*cljs-ns*))
       (println "To quit, type:" :cljs/quit))
@@ -228,6 +230,7 @@
   (binding [*out* (@session #'*out*)
             *err* (@session #'*err*)
             ana/*cljs-ns* (if ns (symbol ns) (@session #'ana/*cljs-ns*))
+            ana/*cljs-warnings* (@session #'*cljs-warnings* ana/*cljs-warnings*)
             ana/*cljs-warning-handlers* (@session #'*cljs-warning-handlers* ana/*cljs-warning-handlers*)
             ana/*unchecked-if* (@session ana/*unchecked-if*)
             env/*compiler* (@session #'*cljs-compiler-env*)]
@@ -304,6 +307,7 @@
         (swap! session (partial merge {#'*cljs-repl-env* *cljs-repl-env*
                                        #'*cljs-compiler-env* *cljs-compiler-env*
                                        #'*cljs-repl-options* *cljs-repl-options*
+                                       #'*cljs-warnings* *cljs-warnings*
                                        #'*cljs-warning-handlers* *cljs-warning-handlers*
                                        #'*original-clj-ns* *original-clj-ns*
                                        #'ana/*cljs-ns* ana/*cljs-ns*})))

@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `0.3.10`
+
+* [#95](https://github.com/nrepl/piggieback/issues/95): Bind `*cljs-warnings*`.
+
 ## `0.3.9`
 
 * honor `:repl-requires` CLJS repl option
