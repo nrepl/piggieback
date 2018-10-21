@@ -177,8 +177,8 @@
       (set! *cljs-repl-options* opts)
       ;; interruptible-eval is in charge of emitting the final :ns response in this context
       (set! *original-clj-ns* *ns*)
-      (set! *cljs-warnings* cljs.analyzer/*cljs-warnings*)
-      (set! *cljs-warning-handlers* cljs.analyzer/*cljs-warning-handlers*)
+      (set! *cljs-warnings* ana/*cljs-warnings*)
+      (set! *cljs-warning-handlers* ana/*cljs-warning-handlers*)
       (set! *ns* (find-ns ana/*cljs-ns*))
       (println "To quit, type:" :cljs/quit))
     (catch Exception e
