@@ -73,7 +73,7 @@ Add this alias to `~/.clojure/deps.edn`:
 ;; ...
 :aliases {:nrepl
           {:extra-deps
-            {nrepl/nrepl {:mvn/version "0.4.4"}
+            {nrepl/nrepl {:mvn/version "0.4.5"}
              cider/piggieback {:mvn/version "0.3.10"}}}}
 }
 ```
