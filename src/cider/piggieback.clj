@@ -228,9 +228,9 @@
   (binding [*out* (@session #'*out*)
             *err* (@session #'*err*)
             ana/*cljs-ns* (if ns (symbol ns) (@session #'ana/*cljs-ns*))
-            env/*compiler* (@session #'*cljs-compiler-env*)
-            cljs.analyzer/*cljs-warning-handlers*
-            (@session #'*cljs-warning-handlers* cljs.analyzer/*cljs-warning-handlers*)]
+            ana/*cljs-warning-handlers* (@session #'*cljs-warning-handlers* ana/*cljs-warning-handlers*)
+            ana/*unchecked-if* (@session ana/*unchecked-if*)
+            env/*compiler* (@session #'*cljs-compiler-env*)]
     (conditionally-bind-repl-env
      session
      (let [repl-env (@session #'*cljs-repl-env*)
