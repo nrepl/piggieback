@@ -3,11 +3,12 @@
 ## `0.3.10`
 
 * [#95](https://github.com/nrepl/piggieback/issues/95): Bind `*cljs-warnings*`.
+* [#97](https://github.com/nrepl/piggieback/pulls/97): Establish a binding to `cljs.analyzer/*unchecked-if*`.
 
 ## `0.3.9`
 
-* honor `:repl-requires` CLJS repl option
-* bind `cljs.repl/*repl-env*` to better support CLJS versions newer than 1.10.126
+* Honor `:repl-requires` CLJS repl option.
+* Bind `cljs.repl/*repl-env*` to better support CLJS versions newer than 1.10.126.
 
 ## `0.3.8`
 
