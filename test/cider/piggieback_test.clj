@@ -119,3 +119,9 @@
   (is (-> (nrepl/message *session* {:op "eval" :code "(defprotocol Foo [do-a-thing [this]])"})
           nrepl/combine-responses
           :value)))
+
+(deftest handles-multiple-forms
+  (is (= ["#'cljs.user/x" "#'cljs.user/y"]
+         (-> (nrepl/message *session* {:op "eval" :code "(def x 1) (def y 2)" :ns "cljs.user"})
+             nrepl/combine-responses
+             :value))))

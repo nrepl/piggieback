@@ -197,7 +197,12 @@
                         (transport/send transport (response-for msg :status :done))
                         (alter-meta! session dissoc :thread :eval-msg)))))
 
-(defn read-cljs-string [form-str]
+(defn read-cljs-string
+  "Returns a sequence of forms read from form-str.
+  Allows for evaluating multiple forms in the same message. For
+  instance '(def x 1) (def x 2)` will return the sequence of both
+  forms rather than silently eliding the second form."
+  [form-str]
   (when-not (string/blank? form-str)
     (binding [*ns* (create-ns ana/*cljs-ns*)
               reader/resolve-symbol ana/resolve-symbol
@@ -206,9 +211,15 @@
               (apply merge
                      ((juxt :requires :require-macros)
                       (ana/get-namespace ana/*cljs-ns*)))]
-      (reader/read {:read-cond :allow :features #{:cljs}}
-                   (readers/source-logging-push-back-reader
-                    (java.io.StringReader. form-str))))))
+      (let [rdr (readers/source-logging-push-back-reader
+                 (java.io.StringReader. form-str))
+            eof (Object.)]
+        (take-while #(not= % eof)
+                    (repeatedly
+                     #(reader/read {:read-cond :allow
+                                    :features  #{:cljs}
+                                    :eof       eof}
+                                   rdr)))))))
 
 (defn eval-cljs [repl-env env form opts]
   (cljs.repl/evaluate-form repl-env
@@ -242,26 +253,27 @@
            special-fns (merge cljs.repl/default-special-fns (:special-fns repl-options))
            is-special-fn? (set (keys special-fns))]
        (try
-         (let [form (read-cljs-string code)
-               env  (assoc (ana/empty-env) :ns (ana/get-namespace init-ns))
-               result (when form
-                        (if (and (seq? form) (is-special-fn? (first form)))
-                          (do ((get special-fns (first form)) repl-env env form repl-options)
-                              nil)
-                          (eval-cljs repl-env env form repl-options)))]
-           (.flush ^Writer *out*)
-           (.flush ^Writer *err*)
-           (when (and
-                  (or (not ns)
-                      (not= init-ns ana/*cljs-ns*))
-                  ana/*cljs-ns*)
-             (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
-           (transport/send
-            transport
-            (response-for msg
-                          {:value (or result "nil")
-                           :printed-value 1
-                           :ns (@session #'ana/*cljs-ns*)})))
+         (let [forms (read-cljs-string code)]
+           (doseq [form forms]
+             (let [env    (assoc (ana/empty-env) :ns (ana/get-namespace init-ns))
+                   result (when form
+                            (if (and (seq? form) (is-special-fn? (first form)))
+                              (do ((get special-fns (first form)) repl-env env form repl-options)
+                                  nil)
+                              (eval-cljs repl-env env form repl-options)))]
+               (.flush ^Writer *out*)
+               (.flush ^Writer *err*)
+               (when (and
+                      (or (not ns)
+                          (not= init-ns ana/*cljs-ns*))
+                      ana/*cljs-ns*)
+                 (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
+               (transport/send
+                transport
+                (response-for msg
+                              {:value         (or result "nil")
+                               :printed-value 1
+                               :ns            (@session #'ana/*cljs-ns*)})))))
          (catch Throwable t
            (repl-caught session transport msg t repl-env repl-options)))))))
 

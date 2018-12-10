@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `Master`
+
+* [#98](https://github.com/nrepl/piggieback/pull/98): Read multiple forms from input.
+
 ## `0.3.10`
 
 * [#95](https://github.com/nrepl/piggieback/issues/95): Bind `*cljs-warnings*`.
