@@ -7,7 +7,10 @@ cache:
 script: make $TARGET
 env:
   matrix:
+    - VERSION=1.8 TARGET=test
     - VERSION=1.9 TARGET=test
+    - VERSION=1.10 TARGET=test
+    - VERSION=master TARGET=test
 jdk:
   - openjdk8
   - openjdk11
@@ -18,29 +21,17 @@ stages:
   - name: test
 jobs:
   include:
-    # Test latest OpenJDK against latest Clojure stable
-    - env: VERSION=1.9 TARGET=test
-      jdk: openjdk8
+    - stage: check
+      env: VERSION=1.10 TARGET=eastwood
 
-    # Test Clojure master against a single JDK
-    - env: VERSION=master TARGET=test
-      jdk: openjdk11
+    - stage: check
+      env: VERSION=1.10 TARGET=cljfmt
 
-    # Coverage analysis
     - env: VERSION=1.9 TARGET=cloverage
-      jdk: openjdk11
       after_success: bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
-
-    # Eastwood linter
-    - stage: check
-      env: VERSION=1.9 TARGET=eastwood
-
-    # Check cljfmt
-    - stage: check
-      env: VERSION=1.9 TARGET=cljfmt
 
   fast_finish: true      # don't wait for allowed failures before build finish
   allow_failures:
     - jdk: openjdk-ea
     - env: VERSION=master TARGET=test
-    - env: VERSION=1.9 TARGET=cloverage
+    - env: VERSION=1.10 TARGET=cloverage
