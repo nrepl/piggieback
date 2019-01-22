@@ -27,7 +27,8 @@ jobs:
     - stage: check
       env: VERSION=1.10 TARGET=cljfmt
 
-    - env: VERSION=1.9 TARGET=cloverage
+    - stage: test
+      env: VERSION=1.9 TARGET=cloverage
       after_success: bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
 
 matrix:

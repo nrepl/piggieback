@@ -40,7 +40,9 @@
 
              :sysutils {:plugins [[lein-sysutils "0.2.0"]]}
 
-             :cloverage {:plugins [[lein-cloverage "1.0.13"]]}
+             :cloverage [:test
+                         {:plugins [[lein-cloverage "1.0.13"]]
+                          :cloverage {:codecov? true}}]
 
              :cljfmt {:plugins [[lein-cljfmt "0.6.1"]]}
 
