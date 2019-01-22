@@ -10,8 +10,6 @@
 
   :source-paths ["src"]
 
-  :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}
-
   :deploy-repositories [["clojars" {:url "https://clojars.org/repo"
                                     :sign-releases false}]]
 
@@ -37,6 +35,8 @@
              :master {:repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
                       :dependencies [[org.clojure/clojure "1.11.0-master-SNAPSHOT"]
                                      [org.clojure/clojurescript "1.10.439"]]}
+
+             :repl {:repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}
 
              :sysutils {:plugins [[lein-sysutils "0.2.0"]]}
 
