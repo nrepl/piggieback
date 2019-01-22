@@ -30,7 +30,8 @@ jobs:
     - env: VERSION=1.9 TARGET=cloverage
       after_success: bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
 
-  fast_finish: true      # don't wait for allowed failures before build finish
+matrix:
+  fast_finish: true
   allow_failures:
     - jdk: openjdk-ea
     - env: VERSION=master TARGET=test
