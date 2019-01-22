@@ -4,32 +4,21 @@
   (:refer-clojure :exclude (load-file))
   (:require
    [clojure.java.io :as io]
+   [clojure.main]
    [clojure.string :as string]
    [clojure.tools.reader :as reader]
    [clojure.tools.reader.reader-types :as readers]
    cljs.repl
    [cljs.env :as env]
    [cljs.analyzer :as ana]
-   [cljs.tagged-literals :as tags])
-  (:import java.io.StringReader
-           java.io.Writer))
-
-;; Compatibility with the legacy tools.nrepl and the new nREPL 0.4.x.
-;; The assumption is that if someone is using old lein repl or boot repl
-;; they'll end up using the tools.nrepl, otherwise the modern one.
-(if (find-ns 'clojure.tools.nrepl)
-  (require
-   '[clojure.tools.nrepl :as nrepl]
-   '[clojure.tools.nrepl.middleware :as middleware :refer (set-descriptor!)]
-   '[clojure.tools.nrepl.middleware.interruptible-eval :as ieval]
-   '[clojure.tools.nrepl.misc :as misc :refer (response-for)]
-   '[clojure.tools.nrepl.transport :as transport])
-  (require
-   '[nrepl.core :as nrepl]
-   '[nrepl.middleware :as middleware :refer (set-descriptor!)]
-   '[nrepl.middleware.interruptible-eval :as ieval]
-   '[nrepl.misc :as misc :refer (response-for)]
-   '[nrepl.transport :as transport]))
+   [cljs.tagged-literals :as tags]
+   [nrepl.core :as nrepl]
+   [nrepl.middleware :as middleware :refer [set-descriptor!]]
+   [nrepl.middleware.interruptible-eval :as ieval]
+   [nrepl.misc :as misc :refer [response-for]]
+   [nrepl.transport :as transport])
+  (:import
+   (java.io StringReader Writer)))
 
 ;; this is the var that is checked by the middleware to determine whether an
 ;; active CLJS REPL is in flight
@@ -185,17 +174,25 @@
       (set! *cljs-repl-env* nil)
       (throw e))))
 
-;; mostly a copy/paste from interruptible-eval
-(defn- enqueue [{:keys [session transport] :as msg} func]
-  (ieval/queue-eval session @ieval/default-executor
-                    (fn []
-                      (alter-meta! session assoc
-                                   :thread (Thread/currentThread)
-                                   :eval-msg msg)
-                      (binding [ieval/*msg* msg]
-                        (func)
-                        (transport/send transport (response-for msg :status :done))
-                        (alter-meta! session dissoc :thread :eval-msg)))))
+(defn- enqueue [{:keys [id session transport] :as msg} func]
+  (if-let [queue-eval (resolve 'nrepl.middleware.interruptible-eval/queue-eval)]
+    ;; nrepl 0.4.x / 0.5.x
+    ;; mostly a copy/paste from interruptible-eval
+    (queue-eval session @@(resolve 'nrepl.middleware.interruptible-eval/default-executor)
+                (fn []
+                  (alter-meta! session assoc
+                               :thread (Thread/currentThread)
+                               :eval-msg msg)
+                  (binding [ieval/*msg* msg]
+                    (func)
+                    (transport/send transport (response-for msg :status :done))
+                    (alter-meta! session dissoc :thread :eval-msg))))
+    ;; nrepl 0.6.x
+    (let [{:keys [exec]} (meta session)]
+      (exec id
+            #(binding [ieval/*msg* msg]
+               (func))
+            #(transport/send transport (response-for msg :status :done))))))
 
 (defn read-cljs-string [form-str]
   (when-not (string/blank? form-str)
@@ -260,6 +257,7 @@
             transport
             (response-for msg
                           {:value (or result "nil")
+                           ;; TODO :printed-value was removed in nREPL 0.6.0
                            :printed-value 1
                            :ns (@session #'ana/*cljs-ns*)})))
          (catch Throwable t
@@ -282,6 +280,7 @@
              #'ana/*cljs-ns* 'cljs.user)
       (transport/send transport (response-for msg
                                               :value "nil"
+                                              ;; TODO :printed-value was removed in nREPL 0.6.0
                                               :printed-value 1
                                               :ns (str (@session #'*original-clj-ns*)))))))
 
@@ -297,10 +296,12 @@
   (evaluate (assoc msg :code (format "(load-file %s)" (pr-str file-path)))))
 
 (defn wrap-cljs-repl [handler]
-  (fn [{:keys [session op] :as msg}]
-    (let [handler (or (when-let [f (and (@session #'*cljs-repl-env*)
+  (fn [{:keys [id session transport op] :as msg}]
+    (let [{:keys [exec]} (meta session)
+          handler (or (when-let [f (and (@session #'*cljs-repl-env*)
                                         ({"eval" #'evaluate "load-file" #'load-file} op))]
-                        (fn [msg] (enqueue msg #(f msg))))
+                        (fn [msg]
+                          (enqueue msg #(f msg))))
                       handler)]
       ;; ensure that bindings exist so cljs-repl can set!
       (when-not (contains? @session #'*cljs-repl-env*)

@@ -6,7 +6,7 @@
   :scm {:name "git" :url "https://github.com/nrepl/piggieback"}
   :min-lein-version "2.0.0"
 
-  :dependencies [[nrepl/nrepl "0.4.5"]]
+  :dependencies [[nrepl/nrepl "0.6.0-SNAPSHOT"]]
 
   :source-paths ["src"]
 
@@ -15,10 +15,7 @@
 
   :aliases  {"all" ["with-profile" "dev"]}
 
-  ;; painful for users; https://github.com/technomancy/leiningen/issues/1771
   :profiles {:provided [:1.8]
-
-             :dev {:dependencies [[org.clojure/tools.nrepl "0.2.13"]]}
 
              :test {:source-paths ["env/test"]}
 
