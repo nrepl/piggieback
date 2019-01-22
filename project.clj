@@ -18,8 +18,9 @@
   ;; painful for users; https://github.com/technomancy/leiningen/issues/1771
   :profiles {:provided [:1.8]
 
-             :dev {:dependencies [[org.clojure/tools.nrepl "0.2.13"]]
-                   :source-paths ["dev"]}
+             :dev {:dependencies [[org.clojure/tools.nrepl "0.2.13"]]}
+
+             :test {:source-paths ["env/test"]}
 
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]
                                   [org.clojure/clojurescript "1.8.51"]
@@ -36,7 +37,10 @@
                       :dependencies [[org.clojure/clojure "1.11.0-master-SNAPSHOT"]
                                      [org.clojure/clojurescript "1.10.439"]]}
 
-             :repl {:repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}
+             ;; Need ^:repl because of: https://github.com/technomancy/leiningen/issues/2132
+             :repl ^:repl [:test
+                           {:source-paths ["env/repl"]
+                            :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}]
 
              :sysutils {:plugins [[lein-sysutils "0.2.0"]]}
 
