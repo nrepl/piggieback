@@ -36,4 +36,5 @@ matrix:
   allow_failures:
     - jdk: openjdk-ea
     - env: VERSION=master TARGET=test
+    - env: VERSION=1.10 TARGET=eastwood
     - env: VERSION=1.10 TARGET=cloverage
