@@ -30,7 +30,7 @@
 
              :cloverage {:plugins [[lein-cloverage "1.0.13"]]}
 
-             :cljfmt {:plugins [[lein-cljfmt "0.5.7"]]}
+             :cljfmt {:plugins [[lein-cljfmt "0.6.1"]]}
 
              :eastwood {:plugins  [[jonase/eastwood "0.2.5"]]
                         :eastwood {:config-files ["eastwood.clj"]}}})
