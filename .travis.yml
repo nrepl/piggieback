@@ -17,18 +17,20 @@ jdk:
   - openjdk-ea
 stages:
   - name: check
-    jdk: openjdk11
   - name: test
 jobs:
   include:
     - stage: check
+      jdk: openjdk11
       env: VERSION=1.10 TARGET=eastwood
 
     - stage: check
+      jdk: openjdk11
       env: VERSION=1.10 TARGET=cljfmt
 
     - stage: test
       env: VERSION=1.9 TARGET=cloverage
+      jdk: openjdk11
       after_success: bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
 
 matrix:
