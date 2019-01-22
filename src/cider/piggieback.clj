@@ -8,7 +8,8 @@
    [clojure.string :as string]
    [clojure.tools.reader :as reader]
    [clojure.tools.reader.reader-types :as readers]
-   cljs.repl
+   [cljs.closure]
+   [cljs.repl]
    [cljs.env :as env]
    [cljs.analyzer :as ana]
    [cljs.tagged-literals :as tags]
