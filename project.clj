@@ -21,10 +21,10 @@
                                   [javax.xml.bind/jaxb-api "2.3.1"]]
                    :source-paths ["src" "dev"]}
              :1.9 {:dependencies [[org.clojure/clojure "1.9.0"]
-                                  [org.clojure/clojurescript "1.9.946" :scope "provided"]]}
+                                  [org.clojure/clojurescript "1.9.946"]]}
              :master {:repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
                       :dependencies [[org.clojure/clojure "1.10.0-master-SNAPSHOT"]
-                                     [org.clojure/clojurescript "1.9.946" :scope "provided"]]}
+                                     [org.clojure/clojurescript "1.9.946"]]}
 
              :sysutils {:plugins [[lein-sysutils "0.2.0"]]}
 
