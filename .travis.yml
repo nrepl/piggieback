@@ -31,7 +31,6 @@ jobs:
     - stage: test
       env: VERSION=1.9 TARGET=cloverage
       jdk: openjdk11
-      after_success: bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
 
 matrix:
   fast_finish: true

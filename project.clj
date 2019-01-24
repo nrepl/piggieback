@@ -6,8 +6,6 @@
   :scm {:name "git" :url "https://github.com/nrepl/piggieback"}
   :min-lein-version "2.0.0"
 
-  :dependencies [[nrepl/nrepl "0.6.0-SNAPSHOT"]]
-
   :source-paths ["src"]
 
   :deploy-repositories [["clojars" {:url "https://clojars.org/repo"
@@ -15,7 +13,7 @@
 
   :aliases  {"all" ["with-profile" "dev"]}
 
-  :profiles {:provided [:1.8]
+  :profiles {:provided [:1.8 :nrepl-0.5]
 
              :test {:source-paths ["env/test"]}
 
@@ -33,6 +31,10 @@
              :master {:repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
                       :dependencies [[org.clojure/clojure "1.11.0-master-SNAPSHOT"]
                                      [org.clojure/clojurescript "1.10.439"]]}
+
+             :nrepl-0.4 {:dependencies [[nrepl/nrepl "0.4.5"]]}
+             :nrepl-0.5 {:dependencies [[nrepl/nrepl "0.5.3"]]}
+             :nrepl-0.6 {:dependencies [[nrepl/nrepl "0.6.0-SNAPSHOT"]]}
 
              ;; Need ^:repl because of: https://github.com/technomancy/leiningen/issues/2132
              :repl ^:repl [:test
