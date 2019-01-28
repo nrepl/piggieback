@@ -5,11 +5,10 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :scm {:name "git" :url "https://github.com/nrepl/piggieback"}
   :min-lein-version "2.0.0"
-  :dependencies [[nrepl/nrepl "0.4.5"]
-                 [org.clojure/clojure "1.8.0"]
-                 [org.clojure/clojurescript "1.9.946"]]
 
-  :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}
+  :dependencies [[nrepl/nrepl "0.4.5"]]
+
+  :source-paths ["src"]
 
   :deploy-repositories [["clojars" {:url "https://clojars.org/repo"
                                     :sign-releases false}]]
@@ -17,19 +16,39 @@
   :aliases  {"all" ["with-profile" "dev"]}
 
   ;; painful for users; https://github.com/technomancy/leiningen/issues/1771
-  :profiles {:dev {:dependencies [[org.clojure/tools.nrepl "0.2.13"]]
-                   :source-paths ["src" "dev"]}
+  :profiles {:provided [:1.8]
+
+             :dev {:dependencies [[org.clojure/tools.nrepl "0.2.13"]]}
+
+             :test {:source-paths ["env/test"]}
+
+             :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]
+                                  [org.clojure/clojurescript "1.8.51"]
+                                  [javax.xml.bind/jaxb-api "2.3.1"]]}
+
              :1.9 {:dependencies [[org.clojure/clojure "1.9.0"]
-                                  [org.clojure/clojurescript "1.9.946" :scope "provided"]]}
+                                  [org.clojure/clojurescript "1.9.946"]
+                                  [javax.xml.bind/jaxb-api "2.3.1"]]}
+
+             :1.10 {:dependencies [[org.clojure/clojure "1.10.0"]
+                                   [org.clojure/clojurescript "1.10.63"]]}
+
              :master {:repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
-                      :dependencies [[org.clojure/clojure "1.10.0-master-SNAPSHOT"]
-                                     [org.clojure/clojurescript "1.9.946" :scope "provided"]]}
+                      :dependencies [[org.clojure/clojure "1.11.0-master-SNAPSHOT"]
+                                     [org.clojure/clojurescript "1.10.439"]]}
+
+             ;; Need ^:repl because of: https://github.com/technomancy/leiningen/issues/2132
+             :repl ^:repl [:test
+                           {:source-paths ["env/repl"]
+                            :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}]
 
              :sysutils {:plugins [[lein-sysutils "0.2.0"]]}
 
-             :cloverage {:plugins [[lein-cloverage "1.0.11-SNAPSHOT"]]}
+             :cloverage [:test
+                         {:plugins [[lein-cloverage "1.0.13"]]
+                          :cloverage {:codecov? true}}]
 
-             :cljfmt {:plugins [[lein-cljfmt "0.5.7"]]}
+             :cljfmt {:plugins [[lein-cljfmt "0.6.1"]]}
 
-             :eastwood {:plugins  [[jonase/eastwood "0.2.5"]]
+             :eastwood {:plugins  [[jonase/eastwood "0.3.4"]]
                         :eastwood {:config-files ["eastwood.clj"]}}})

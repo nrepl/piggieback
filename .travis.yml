@@ -1,61 +1,41 @@
+dist: xenial
 language: clojure
-lein: 2.8.1
-sudo: false
+lein: 2.8.3
 cache:
   directories:
     - $HOME/.m2
 script: make $TARGET
 env:
   matrix:
+    - VERSION=1.8 TARGET=test
     - VERSION=1.9 TARGET=test
-  #global:
-  #  - secure: "abc" # placeholder for deployment credentials
-  #  - secure: "xyz"
+    - VERSION=1.10 TARGET=test
+    - VERSION=master TARGET=test
 jdk:
-  - oraclejdk8
-  - oraclejdk9
+  - openjdk8
+  - openjdk11
+  - openjdk-ea
 stages:
   - name: check
   - name: test
-  # Deploy only from the home repo where the credentials can be
-  # properly decrypted. Never deploy from a pull request job.
-  # In addition, ensure we're on the master branch (snapshots)
-  # or a branch with semver naming (releases).
-  #- name: deploy
-  #  if: repo = clojure-emacs/orchard
-  #      AND type != pull_request
-  #      AND ( branch = master OR branch =~ ^v[0-9]+\.[0-9]+\.[0-9]+.*$ )
 jobs:
   include:
-    # Test latest OpenJDK against latest Clojure stable
-    - env: VERSION=1.9 TARGET=test
-      jdk: openjdk8
+    - stage: check
+      jdk: openjdk11
+      env: VERSION=1.10 TARGET=eastwood
 
-    # Test Clojure master against a single JDK
-    - env: VERSION=master TARGET=test
-      jdk: oraclejdk9
+    - stage: check
+      jdk: openjdk11
+      env: VERSION=1.10 TARGET=cljfmt
 
-    # Coverage analysis
-    - env: VERSION=1.9 TARGET=cloverage
-      jdk: oraclejdk8
+    - stage: test
+      env: VERSION=1.9 TARGET=cloverage
+      jdk: openjdk11
       after_success: bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json
 
-    # Eastwood linter
-    - stage: check
-      env: VERSION=1.9 TARGET=eastwood
-      jdk: oraclejdk8
-
-    # Check cljfmt
-    - stage: check
-      env: VERSION=1.9 TARGET=cljfmt
-      jdk: oraclejdk8
-
-    # Deploy artifacts
-    #- stage: deploy
-    #  env: TARGET=deploy
-    #  jdk: oraclejdk8
-
-  fast_finish: true      # don't wait for allowed failures before build finish
+matrix:
+  fast_finish: true
   allow_failures:
+    - jdk: openjdk-ea
     - env: VERSION=master TARGET=test
-    - env: VERSION=1.9 TARGET=cloverage
+    - env: VERSION=1.10 TARGET=eastwood

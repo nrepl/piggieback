@@ -9,13 +9,7 @@ JAVA_VERSION := $(shell lein with-profile +sysutils \
                         sysutils :java-version-simple | cut -d " " -f 2)
 
 test:
-	if [ "$(JAVA_VERSION)" = "9" ]; then \
-            lein with-profile +$(VERSION) \
-                 update-in :jvm-opts concat '["--add-modules" "java.xml.bind"]' \
-                 -- test; \
-        else \
-            lein with-profile +$(VERSION) test; \
-        fi
+	lein with-profile +$(VERSION) test
 
 eastwood:
 	lein with-profile +$(VERSION),+eastwood eastwood
@@ -24,8 +18,7 @@ cljfmt:
 	lein with-profile +$(VERSION),+cljfmt cljfmt check
 
 cloverage:
-	lein with-profile +$(VERSION),+cloverage \
-             cloverage --codecov -e clojure.tools.reader.*
+	lein with-profile +$(VERSION),+cloverage cloverage
 
 # When releasing, the BUMP variable controls which field in the
 # version string will be incremented in the *next* snapshot
