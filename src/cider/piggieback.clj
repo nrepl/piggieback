@@ -154,7 +154,7 @@
                              repl-opts options)))]
       (set! ana/*cljs-ns* 'cljs.user)
       ;; this will implicitly set! *cljs-compiler-env*
-      (run-cljs-repl (assoc ieval/*msg* ::first-cljs-repl true)
+      (run-cljs-repl ieval/*msg*
                      ;; this is needed to respect :repl-requires
                      (if-let [requires (not-empty (:repl-requires opts))]
                        (pr-str (cons 'ns `(cljs.user (:require ~@requires))))
