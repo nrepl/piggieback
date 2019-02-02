@@ -9,7 +9,10 @@ JAVA_VERSION := $(shell lein with-profile +sysutils \
                         sysutils :java-version-simple | cut -d " " -f 2)
 
 test:
-	lein with-profile +$(VERSION) test
+	set -e; set -x; \
+	for v in "nrepl-0.4" "nrepl-0.5" "nrepl-0.6"; do \
+	  lein with-profile +$(VERSION),+$$v test; \
+	done;
 
 eastwood:
 	lein with-profile +$(VERSION),+eastwood eastwood
@@ -17,8 +20,15 @@ eastwood:
 cljfmt:
 	lein with-profile +$(VERSION),+cljfmt cljfmt check
 
+cloverage: SHELL := /bin/bash
 cloverage:
-	lein with-profile +$(VERSION),+cloverage cloverage
+	set -e; set -x; \
+	for v in "nrepl-0.4" "nrepl-0.5" "nrepl-0.6"; do \
+	  lein with-profile +$(VERSION),+$$v,+cloverage cloverage; \
+	  if [ ! -z $$TRAVIS ] ; \
+	    then bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json ; \
+	  fi ; \
+	done;
 
 # When releasing, the BUMP variable controls which field in the
 # version string will be incremented in the *next* snapshot

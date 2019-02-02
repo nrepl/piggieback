@@ -1,14 +1,8 @@
 (ns cider.piggieback-test
   (:require
-   [clojure.test :refer :all]))
-
-(if (find-ns 'clojure.tools.nrepl)
-  (require
-   '[clojure.tools.nrepl :as nrepl]
-   '[clojure.tools.nrepl.server :as server])
-  (require
-   '[nrepl.core :as nrepl]
-   '[nrepl.server :as server]))
+   [clojure.test :refer :all]
+   [nrepl.core :as nrepl]
+   [nrepl.server :as server]))
 
 (require '[cider.piggieback :as pb])
 
@@ -54,11 +48,6 @@
 (use-fixtures :once repl-server-fixture)
 
 (deftest default-sanity
-  ;; I think there's a race condition between when previous expressions are evaluated
-  ;; (which nREPL serializes for a session) and when the next code to be evaluated is analyzed
-  ;; in piggieback (which has no visibility into the session serialization mechanism). The
-  ;; fix is to work like a REPL _should_, i.e. wait for the full response of an evaluation
-  ;; prior to sending out another chunk of code.
   (dorun (nrepl/message *session* {:op "eval" :code "(defn x [] (into [] (js/Array 1 2 3)))"}))
   (is (= [1 2 3] (->> {:op "eval" :code "(x)"} (nrepl/message *session*) nrepl/response-values first))))
 
