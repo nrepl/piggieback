@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## `0.4.0`
+
+* **(Breaking)** Dropped support for `clojure.tools.nrepl`. `[nrepl "0.4.0"]` is
+  now the minimum required version.
+* Add compatibility with nREPL 0.6+.
+
 ## `0.3.10`
 
 * [#95](https://github.com/nrepl/piggieback/issues/95): Bind `*cljs-warnings*`.
