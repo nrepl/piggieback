@@ -33,7 +33,7 @@ original state.
 ## Installation
 
 Piggieback is compatible with Clojure 1.8.0+, and _requires_ ClojureScript
-`1.9` or later and nREPL `0.2.10` or later.
+`1.9` or later and nREPL `0.4.0` or later.
 
 **Please, note that Piggieback 0.3.7 is the first version compatible
 with nREPL 0.4+.**
@@ -47,7 +47,7 @@ Modify your `project.clj` to include the following `:dependencies` and
 `:repl-options`:
 
 ```clojure
-:profiles {:dev {:dependencies [[cider/piggieback "0.3.10"]]
+:profiles {:dev {:dependencies [[cider/piggieback "0.4.0"]]
                  :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}}
 ```
 
@@ -73,8 +73,8 @@ Add this alias to `~/.clojure/deps.edn`:
 ;; ...
 :aliases {:nrepl
           {:extra-deps
-            {nrepl/nrepl {:mvn/version "0.4.5"}
-             cider/piggieback {:mvn/version "0.3.10"}}}}
+            {nrepl/nrepl {:mvn/version "0.6.0"}
+             cider/piggieback {:mvn/version "0.4.0"}}}}
 }
 ```
 
