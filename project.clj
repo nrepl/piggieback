@@ -34,7 +34,7 @@
 
              :nrepl-0.4 {:dependencies [[nrepl/nrepl "0.4.5"]]}
              :nrepl-0.5 {:dependencies [[nrepl/nrepl "0.5.3"]]}
-             :nrepl-0.6 {:dependencies [[nrepl/nrepl "0.6.0-SNAPSHOT"]]}
+             :nrepl-0.6 {:dependencies [[nrepl/nrepl "0.6.0"]]}
 
              ;; Need ^:repl because of: https://github.com/technomancy/leiningen/issues/2132
              :repl ^:repl [:test
