@@ -220,45 +220,52 @@
        ~body)
     body))
 
+(defn- output-bindings [{:keys [session] :as msg}]
+  (if-let [replying-PrintWriter (resolve 'nrepl.middleware.print/replying-PrintWriter)]
+    ;; nrepl 0.6.x
+    {#'*out* (replying-PrintWriter :out msg {})
+     #'*err* (replying-PrintWriter :err msg {})}
+    ;; nrepl 0.4.x / 0.5.x
+    (select-keys @session [#'*out* #'*err*])))
+
 (defn do-eval [{:keys [session transport ^String code ns] :as msg}]
-  (binding [*out* (@session #'*out*)
-            *err* (@session #'*err*)
-            ana/*cljs-ns* (if ns (symbol ns) (@session #'ana/*cljs-ns*))
-            ana/*cljs-warnings* (@session #'*cljs-warnings* ana/*cljs-warnings*)
-            ana/*cljs-warning-handlers* (@session #'*cljs-warning-handlers* ana/*cljs-warning-handlers*)
-            ana/*unchecked-if* (@session ana/*unchecked-if*)
-            env/*compiler* (@session #'*cljs-compiler-env*)]
-    (conditionally-bind-repl-env
-     session
-     (let [repl-env (@session #'*cljs-repl-env*)
-           repl-options (@session #'*cljs-repl-options*)
-           init-ns ana/*cljs-ns*
-           special-fns (merge cljs.repl/default-special-fns (:special-fns repl-options))
-           is-special-fn? (set (keys special-fns))]
-       (try
-         (let [form (read-cljs-string code)
-               env  (assoc (ana/empty-env) :ns (ana/get-namespace init-ns))
-               result (when form
-                        (if (and (seq? form) (is-special-fn? (first form)))
-                          (do ((get special-fns (first form)) repl-env env form repl-options)
-                              nil)
-                          (eval-cljs repl-env env form repl-options)))]
-           (.flush ^Writer *out*)
-           (.flush ^Writer *err*)
-           (when (and
-                  (or (not ns)
-                      (not= init-ns ana/*cljs-ns*))
-                  ana/*cljs-ns*)
-             (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
-           (transport/send
-            transport
-            (response-for msg
-                          {:value (or result "nil")
-                           ;; TODO :printed-value was removed in nREPL 0.6.0
-                           :printed-value 1
-                           :ns (@session #'ana/*cljs-ns*)})))
-         (catch Throwable t
-           (repl-caught session transport msg t repl-env repl-options)))))))
+  (with-bindings (output-bindings msg)
+    (binding [ana/*cljs-ns* (if ns (symbol ns) (@session #'ana/*cljs-ns*))
+              ana/*cljs-warnings* (@session #'*cljs-warnings* ana/*cljs-warnings*)
+              ana/*cljs-warning-handlers* (@session #'*cljs-warning-handlers* ana/*cljs-warning-handlers*)
+              ana/*unchecked-if* (@session ana/*unchecked-if*)
+              env/*compiler* (@session #'*cljs-compiler-env*)]
+      (conditionally-bind-repl-env
+       session
+       (let [repl-env (@session #'*cljs-repl-env*)
+             repl-options (@session #'*cljs-repl-options*)
+             init-ns ana/*cljs-ns*
+             special-fns (merge cljs.repl/default-special-fns (:special-fns repl-options))
+             is-special-fn? (set (keys special-fns))]
+         (try
+           (let [form (read-cljs-string code)
+                 env  (assoc (ana/empty-env) :ns (ana/get-namespace init-ns))
+                 result (when form
+                          (if (and (seq? form) (is-special-fn? (first form)))
+                            (do ((get special-fns (first form)) repl-env env form repl-options)
+                                nil)
+                            (eval-cljs repl-env env form repl-options)))]
+             (.flush ^Writer *out*)
+             (.flush ^Writer *err*)
+             (when (and
+                    (or (not ns)
+                        (not= init-ns ana/*cljs-ns*))
+                    ana/*cljs-ns*)
+               (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
+             (transport/send
+              transport
+              (response-for msg
+                            {:value (or result "nil")
+                             ;; TODO :printed-value was removed in nREPL 0.6.0
+                             :printed-value 1
+                             :ns (@session #'ana/*cljs-ns*)})))
+           (catch Throwable t
+             (repl-caught session transport msg t repl-env repl-options))))))))
 
 ;; only executed within the context of an nREPL session having *cljs-repl-env*
 ;; bound. Thus, we're not going through interruptible-eval, and the user's

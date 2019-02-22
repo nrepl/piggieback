@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## `0.4.1`
+
+* Fix a bug affecting nREPL 0.6 where `*out*` and `*err` were not reliably bound after session init.
+
 ## `0.4.0`
 
 * **(Breaking)** Dropped support for `clojure.tools.nrepl`. `[nrepl "0.4.0"]` is
