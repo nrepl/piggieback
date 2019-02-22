@@ -108,9 +108,7 @@
                       code repl-env compiler-env options]
   (let [initns (if ns (symbol ns) (@session #'ana/*cljs-ns*))
         repl cljs.repl/repl*]
-    (binding [ana/*cljs-ns* initns
-              *out* (@session #'*out*)
-              *err* (@session #'*err*)]
+    (binding [ana/*cljs-ns* initns]
       (with-in-str (str code " :cljs/quit")
         (repl repl-env
               (merge
