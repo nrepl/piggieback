@@ -233,7 +233,7 @@
     (binding [ana/*cljs-ns* (if ns (symbol ns) (@session #'ana/*cljs-ns*))
               ana/*cljs-warnings* (@session #'*cljs-warnings* ana/*cljs-warnings*)
               ana/*cljs-warning-handlers* (@session #'*cljs-warning-handlers* ana/*cljs-warning-handlers*)
-              ana/*unchecked-if* (@session ana/*unchecked-if*)
+              ana/*unchecked-if* (@session #'ana/*unchecked-if*)
               env/*compiler* (@session #'*cljs-compiler-env*)]
       (conditionally-bind-repl-env
        session
