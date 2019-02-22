@@ -138,8 +138,6 @@
   "Starts a ClojureScript REPL over top an nREPL session.  Accepts
    all options usually accepted by e.g. cljs.repl/repl."
   [repl-env & {:as options}]
-  ;; TODO: I think we need a var to set! the compiler environment from the REPL
-  ;; environment after each eval
   (try
     (let [repl-opts (cljs.repl/-repl-options repl-env)
           repl-env (delegating-repl-env repl-env)
