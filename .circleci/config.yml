@@ -1,0 +1,71 @@
+defaults: &defaults
+  working_directory: ~/repo
+  environment:
+    LEIN_ROOT: "true"
+    JVM_OPTS: -Xmx3200m
+
+version: 2
+jobs:
+  checkout_code:
+    docker:
+      - image: circleci/clojure:lein-2.9.0
+    <<: *defaults
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v2-dependencies-{{ checksum "project.clj" }}
+            - v2-dependencies-
+      - run:
+          name: Downloading deps
+          command: |
+            lein deps
+      - save_cache:
+          paths:
+            - ~/.m2
+          key: v2-dependencies-{{ checksum "project.clj" }}
+      - persist_to_workspace:
+          root: /home/circleci
+          paths:
+            - .m2
+            - repo
+
+  lint_code:
+    docker:
+      - image: circleci/clojure:lein-2.9.0
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci
+      - run:
+          name: Running Eastwood
+          command: |
+            lein with-profile +1.10,+eastwood eastwood
+      - run:
+          name: Running cljfmt
+          command: |
+            lein with-profile +1.10,+cljfmt cljfmt check
+
+  test_code:
+    docker:
+      - image: circleci/clojure:lein-2.9.0
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci
+      - run:
+          name: Unit tests
+          command: |
+            lein with-profile +1.10,+nrepl-0.4 test
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - checkout_code:
+      - lint_code:
+          requires:
+            - checkout_code
+      - test_code:
+          requires:
+            - lint_code
