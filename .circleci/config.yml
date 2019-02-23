@@ -1,10 +1,10 @@
+version: 2.1
+
 defaults: &defaults
   working_directory: ~/repo
   environment:
     LEIN_ROOT: "true"
     JVM_OPTS: -Xmx3200m
-
-version: 2.1
 
 jobs:
   checkout_code:
@@ -39,13 +39,17 @@ jobs:
       - attach_workspace:
           at: /home/circleci
       - run:
+          name: Install make
+          command: |
+            sudo apt-get install make
+      - run:
           name: Running Eastwood
           command: |
-            lein with-profile +1.10,+eastwood eastwood
+            make eastwood
       - run:
           name: Running cljfmt
           command: |
-            lein with-profile +1.10,+cljfmt cljfmt check
+            make cljfmt
 
   test_code:
     description: Run tests
