@@ -61,6 +61,10 @@ jobs:
       - attach_workspace:
           at: /home/circleci
       - run:
+          name: Install make
+          command: |
+            sudo apt-get install make
+      - run:
           name: Running Clojure 1.8 tests
           environment:
             VERSION: "1.8"
