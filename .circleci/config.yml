@@ -70,6 +70,30 @@ jobs:
       - run_test:
           clj-version: "1.8"
           nrepl-version: "0.4"
+      - run_test:
+          clj-version: "1.8"
+          nrepl-version: "0.5"
+      - run_test:
+          clj-version: "1.8"
+          nrepl-version: "0.6"
+
+
+  test_code_openjdk8:
+    docker:
+      - image: circleci/clojure:openjdk-8-lein-2.9.0
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci
+      - run_test:
+          clj-version: "1.8"
+          nrepl-version: "0.4"
+      - run_test:
+          clj-version: "1.8"
+          nrepl-version: "0.5"
+      - run_test:
+          clj-version: "1.8"
+          nrepl-version: "0.6"
 
 workflows:
   version: 2.1
@@ -80,5 +104,8 @@ workflows:
           requires:
             - checkout_code
       - test_code:
+          requires:
+            - lint_code
+      - test_code_openjdk8:
           requires:
             - lint_code
