@@ -54,13 +54,18 @@ jobs:
   test_code:
     description: Run tests
     parameters:
-      jdk-version:
+      jdk_version:
         description: Version of JDK to test against
         type: string
         default: ""
+      clojure_version:
+        description: Version of Clojure to test against
+        type: string
     docker:
-      - image: circleci/clojure:<< parameters.jdk-version >>lein-2.9.0
+      - image: circleci/clojure:<< parameters.jdk_version >>lein-2.9.0
     <<: *defaults
+    environment:
+      VERSION: << parameters.clojure_version >>
     steps:
       - attach_workspace:
           at: /home/circleci
@@ -69,24 +74,7 @@ jobs:
           command: |
             sudo apt-get install make
       - run:
-          name: Running Clojure 1.8 tests
-          environment:
-            VERSION: "1.8"
-          command: make test
-      - run:
-          name: Running Clojure 1.9 tests
-          environment:
-            VERSION: "1.9"
-          command: make test
-      - run:
-          name: Running Clojure 1.10 tests
-          environment:
-            VERSION: "1.10"
-          command: make test
-      - run:
-          name: Running Clojure master tests
-          environment:
-            VERSION: "master"
+          name: Running tests
           command: make test
 
 
@@ -100,16 +88,50 @@ workflows:
           requires:
             - checkout_code
       - test_code:
-          name: Oracale (?) JDK 8 tests
+          name: java8, clj1.8 tests
+          clojure_version: "1.8"
+          jdk_version: openjdk-8-
           requires:
             - checkout_code
       - test_code:
-          name: Open JDK 8 tests
-          jdk-version: openjdk-8-
+          name: java8, clj1.9 tests
+          clojure_version: "1.9"
+          jdk_version: openjdk-8-
           requires:
             - checkout_code
       - test_code:
-          name : Open JDK 11 tests
-          jdk-version: openjdk-11-
+          name: java8, clj1.10 tests
+          clojure_version: "1.10"
+          jdk_version: openjdk-8-
+          requires:
+            - checkout_code
+      - test_code:
+          name: java8, clj master tests
+          clojure_version: "master"
+          jdk_version: openjdk-8-
+          requires:
+            - checkout_code
+      - test_code:
+          name: java11, clj1.8 tests
+          clojure_version: "1.8"
+          jdk_version: openjdk-11-
+          requires:
+            - checkout_code
+      - test_code:
+          name: java11, clj1.9 tests
+          clojure_version: "1.9"
+          jdk_version: openjdk-11-
+          requires:
+            - checkout_code
+      - test_code:
+          name: java11, clj1.10 tests
+          clojure_version: "1.10"
+          jdk_version: openjdk-11-
+          requires:
+            - checkout_code
+      - test_code:
+          name: java11, clj master tests
+          clojure_version: "master"
+          jdk_version: openjdk-11-
           requires:
             - checkout_code
