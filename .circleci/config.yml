@@ -17,7 +17,10 @@ commands:
         type: string
         default: "0.4"
     steps:
-      - run: lein with-profile +<< parameters.clj-version >>,+nrepl-<< parameters.nrepl-version >> test
+      - run:
+          name: Running lein tests on Clojure << parameters.clj-version >> and nREPL << parameters.nrepl-version >>
+          command: |
+            lein with-profile +<< parameters.clj-version >>,+nrepl-<< parameters.nrepl-version >> test
 
 jobs:
   checkout_code:
@@ -61,44 +64,14 @@ jobs:
             lein with-profile +1.10,+cljfmt cljfmt check
 
   test_code:
+    description: "Run tests"
+    parameters:
+      jdk-version:
+        description: "Version of JDK to test against"
+        type: string
+        default: ""
     docker:
-      - image: circleci/clojure:lein-2.9.0
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci
-      - run_test:
-          clj-version: "1.8"
-          nrepl-version: "0.4"
-      - run_test:
-          clj-version: "1.8"
-          nrepl-version: "0.5"
-      - run_test:
-          clj-version: "1.8"
-          nrepl-version: "0.6"
-
-
-  test_code_openjdk8:
-    docker:
-      - image: circleci/clojure:openjdk-8-lein-2.9.0
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci
-      - run_test:
-          clj-version: "1.8"
-          nrepl-version: "0.4"
-      - run_test:
-          clj-version: "1.8"
-          nrepl-version: "0.5"
-      - run_test:
-          clj-version: "1.8"
-          nrepl-version: "0.6"
-
-
-  test_code_openjdk11:
-    docker:
-      - image: circleci/clojure:openjdk-11-lein-2.9.0
+      - image: circleci/clojure:<< parameters.jdk-version >>lein-2.9.0
     <<: *defaults
     steps:
       - attach_workspace:
@@ -125,9 +98,11 @@ workflows:
       - test_code:
           requires:
             - lint_code
-      - test_code_openjdk8:
+      - test_code:
+          jdk-version: openjdk-8-
           requires:
             - lint_code
-      - test_code_openjdk11:
+      - test_code:
+          jdk-version: openjdk-11-
           requires:
             - lint_code
