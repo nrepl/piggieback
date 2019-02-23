@@ -18,7 +18,7 @@ commands:
         default: "0.4"
     steps:
       - run:
-          name: Running lein tests on Clojure << parameters.clj-version >> and nREPL << parameters.nrepl-version >>
+          name: Running tests on Clojure << parameters.clj-version >> and nREPL << parameters.nrepl-version >>
           command: |
             lein with-profile +<< parameters.clj-version >>,+nrepl-<< parameters.nrepl-version >> test
   run_tests_for_clj:
@@ -82,10 +82,10 @@ jobs:
             lein with-profile +1.10,+cljfmt cljfmt check
 
   test_code:
-    description: "Run tests"
+    description: Run tests
     parameters:
       jdk-version:
-        description: "Version of JDK to test against"
+        description: Version of JDK to test against
         type: string
         default: ""
     docker:
@@ -100,6 +100,8 @@ jobs:
           clj-version: "1.9"
       - run_tests_for_clj:
           clj-version: "1.10"
+      - run_tests_for_clj:
+          clj-version: "master"
 
 
 workflows:
@@ -112,12 +114,12 @@ workflows:
             - checkout_code
       - test_code:
           requires:
-            - lint_code
+            - checkout_code
       - test_code:
           jdk-version: openjdk-8-
           requires:
-            - lint_code
+            - checkout_code
       - test_code:
           jdk-version: openjdk-11-
           requires:
-            - lint_code
+            - checkout_code
