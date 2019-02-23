@@ -6,40 +6,6 @@ defaults: &defaults
 
 version: 2.1
 
-commands:
-  run_test:
-    description: Runs tests with given clojure + nrepl versions
-    parameters:
-      clj-version:
-        type: string
-        default: "1.8"
-      nrepl-version:
-        type: string
-        default: "0.4"
-    steps:
-      - run:
-          name: Running tests on Clojure << parameters.clj-version >> and nREPL << parameters.nrepl-version >>
-          command: |
-            lein with-profile +<< parameters.clj-version >>,+nrepl-<< parameters.nrepl-version >> test
-  run_tests_for_clj:
-    description: Runs tests for given clojure version and all nREPL versions
-    parameters:
-      clj-version:
-        description: Clojure Version
-        default: "1.8"
-        type: string
-    steps:
-      - run_test:
-          clj-version: << parameters.clj-version >>
-          nrepl-version: "0.4"
-      - run_test:
-          clj-version: << parameters.clj-version >>
-          nrepl-version: "0.5"
-      - run_test:
-          clj-version: << parameters.clj-version >>
-          nrepl-version: "0.6"
-
-
 jobs:
   checkout_code:
     docker:
@@ -94,14 +60,26 @@ jobs:
     steps:
       - attach_workspace:
           at: /home/circleci
-      - run_tests_for_clj:
-          clj-version: "1.8"
-      - run_tests_for_clj:
-          clj-version: "1.9"
-      - run_tests_for_clj:
-          clj-version: "1.10"
-      - run_tests_for_clj:
-          clj-version: "master"
+      - run:
+          name: Running Clojure 1.8 tests
+          environment:
+            VERSION: "1.8"
+          command: make test
+      - run:
+          name: Running Clojure 1.9 tests
+          environment:
+            VERSION: "1.9"
+          command: make test
+      - run:
+          name: Running Clojure 1.10 tests
+          environment:
+            VERSION: "1.10"
+          command: make test
+      - run:
+          name: Running Clojure master tests
+          environment:
+            VERSION: "master"
+          command: make test
 
 
 workflows:
@@ -110,16 +88,20 @@ workflows:
     jobs:
       - checkout_code
       - lint_code:
+          name: Code Linting
           requires:
             - checkout_code
       - test_code:
+          name: Oracale (?) JDK 8 tests
           requires:
             - checkout_code
       - test_code:
+          name: Open JDK 8 tests
           jdk-version: openjdk-8-
           requires:
             - checkout_code
       - test_code:
+          name : Open JDK 11 tests
           jdk-version: openjdk-11-
           requires:
             - checkout_code
