@@ -95,6 +95,25 @@ jobs:
           clj-version: "1.8"
           nrepl-version: "0.6"
 
+
+  test_code_openjdk11:
+    docker:
+      - image: circleci/clojure:openjdk-11-lein-2.9.0
+    <<: *defaults
+    steps:
+      - attach_workspace:
+          at: /home/circleci
+      - run_test:
+          clj-version: "1.8"
+          nrepl-version: "0.4"
+      - run_test:
+          clj-version: "1.8"
+          nrepl-version: "0.5"
+      - run_test:
+          clj-version: "1.8"
+          nrepl-version: "0.6"
+
+
 workflows:
   version: 2.1
   build_and_test:
@@ -107,5 +126,8 @@ workflows:
           requires:
             - lint_code
       - test_code_openjdk8:
+          requires:
+            - lint_code
+      - test_code_openjdk11:
           requires:
             - lint_code
