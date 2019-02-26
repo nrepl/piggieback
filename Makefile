@@ -25,7 +25,7 @@ cloverage:
 	set -e; set -x; \
 	for v in "nrepl-0.4" "nrepl-0.5" "nrepl-0.6"; do \
 	  lein with-profile +$(VERSION),+$$v,+cloverage cloverage; \
-	  if [ ! -z $$TRAVIS ] ; \
+	  if [ -n $CI ] ; \
 	    then bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json ; \
 	  fi ; \
 	done;

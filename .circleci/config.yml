@@ -77,6 +77,23 @@ jobs:
           name: Running tests
           command: make test
 
+  codecov:
+    docker:
+      - image: circleci/clojure:openjdk-11-lein-2.9.0
+    <<: *defaults
+    environment:
+      VERSION: "1.9"
+    steps:
+      - attach_workspace:
+          at: /home/circleci
+      - run:
+          name: Install make
+          command: |
+            sudo apt-get install make
+      - run:
+          name: Running cloverage
+          command: |
+            make cloverage
 
 workflows:
   version: 2.1
@@ -133,5 +150,8 @@ workflows:
           name: java11, clj master tests
           clojure_version: "master"
           jdk_version: openjdk-11-
+          requires:
+            - checkout_code
+      - codecov:
           requires:
             - checkout_code
