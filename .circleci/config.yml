@@ -6,11 +6,20 @@ defaults: &defaults
     LEIN_ROOT: "true"
     JVM_OPTS: -Xmx3200m
 
+
+executors:
+  openjdk8:
+    docker:
+      - image: circleci/clojure:openjdk-8-lein-2.9.0
+    <<: *defaults
+  openjdk11:
+    docker:
+      - image: circleci/clojure:openjdk-11-lein-2.9.0
+    <<: *defaults
+
 jobs:
   checkout_code:
-    docker:
-      - image: circleci/clojure:lein-2.9.0
-    <<: *defaults
+    executor: openjdk11
     steps:
       - checkout
       - restore_cache:
@@ -32,9 +41,7 @@ jobs:
             - repo
 
   lint_code:
-    docker:
-      - image: circleci/clojure:lein-2.9.0
-    <<: *defaults
+    executor: openjdk11
     steps:
       - attach_workspace:
           at: /home/circleci
@@ -57,13 +64,10 @@ jobs:
       jdk_version:
         description: Version of JDK to test against
         type: string
-        default: ""
       clojure_version:
         description: Version of Clojure to test against
         type: string
-    docker:
-      - image: circleci/clojure:<< parameters.jdk_version >>lein-2.9.0
-    <<: *defaults
+    executor: << parameters.jdk_version >>
     environment:
       VERSION: << parameters.clojure_version >>
     steps:
@@ -78,9 +82,7 @@ jobs:
           command: make test
 
   codecov:
-    docker:
-      - image: circleci/clojure:openjdk-11-lein-2.9.0
-    <<: *defaults
+    executor: openjdk11
     environment:
       VERSION: "1.9"
     steps:
@@ -107,49 +109,49 @@ workflows:
       - test_code:
           name: java8, clj1.8 tests
           clojure_version: "1.8"
-          jdk_version: openjdk-8-
+          jdk_version: openjdk8
           requires:
             - checkout_code
       - test_code:
           name: java8, clj1.9 tests
           clojure_version: "1.9"
-          jdk_version: openjdk-8-
+          jdk_version: openjdk8
           requires:
             - checkout_code
       - test_code:
           name: java8, clj1.10 tests
           clojure_version: "1.10"
-          jdk_version: openjdk-8-
+          jdk_version: openjdk8
           requires:
             - checkout_code
       - test_code:
           name: java8, clj master tests
           clojure_version: "master"
-          jdk_version: openjdk-8-
+          jdk_version: openjdk8
           requires:
             - checkout_code
       - test_code:
           name: java11, clj1.8 tests
           clojure_version: "1.8"
-          jdk_version: openjdk-11-
+          jdk_version: openjdk11
           requires:
             - checkout_code
       - test_code:
           name: java11, clj1.9 tests
           clojure_version: "1.9"
-          jdk_version: openjdk-11-
+          jdk_version: openjdk11
           requires:
             - checkout_code
       - test_code:
           name: java11, clj1.10 tests
           clojure_version: "1.10"
-          jdk_version: openjdk-11-
+          jdk_version: openjdk11
           requires:
             - checkout_code
       - test_code:
           name: java11, clj master tests
           clojure_version: "master"
-          jdk_version: openjdk-11-
+          jdk_version: openjdk11
           requires:
             - checkout_code
       - codecov:
