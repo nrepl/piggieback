@@ -35,12 +35,12 @@ original state.
 Piggieback is compatible with Clojure 1.8.0+, and _requires_ ClojureScript
 `1.9` or later and nREPL `0.4.0` or later.
 
-**Please, note that Piggieback 0.3.7 is the first version compatible
-with nREPL 0.4+.**
+**Note** Piggieback 0.3.7 is the first version compatible with nREPL 0.4+. You need
+Piggieback 0.4+ for nREPL 0.6+.
 
 ### Leiningen
 
-These instructions are for Leiningen. Translating them for use in boot should be
+These instructions are for Leiningen. Translating them for use in Boot should be
 straightforward.
 
 Modify your `project.clj` to include the following `:dependencies` and
