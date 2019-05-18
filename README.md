@@ -84,6 +84,16 @@ Then you can simply run a ClojureScript capable nREPL like this:
 clj -R:nrepl -m nrepl.cmdline --middleware "[cider.piggieback/wrap-cljs-repl]"
 ```
 
+Note that Piggieback assumes that the `cljs` library is available when it runs,
+so this command only works if you are in a directory containing a `deps.edn`
+that references `org.clojure/clojurescript`. Alternatively, you can pass the
+dependency to `clj` as an argument:
+
+```shell
+clj -R:nrepl -Sdeps '{:deps {org.clojure/clojurescript {:mvn/version "1.10.520"}}}' \
+  -m nrepl.cmdline --middleware "[cider.piggieback/wrap-cljs-repl]"
+```
+
 Afterwards simply connect to the running server with your favourite
 nREPL client (e.g. CIDER).
 
