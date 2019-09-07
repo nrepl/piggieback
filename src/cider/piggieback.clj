@@ -291,9 +291,8 @@
   (evaluate (assoc msg :code (format "(load-file %s)" (pr-str file-path)))))
 
 (defn wrap-cljs-repl [handler]
-  (fn [{:keys [id session transport op] :as msg}]
-    (let [{:keys [exec]} (meta session)
-          handler (or (when-let [f (and (@session #'*cljs-repl-env*)
+  (fn [{:keys [session op] :as msg}]
+    (let [handler (or (when-let [f (and (@session #'*cljs-repl-env*)
                                         ({"eval" #'evaluate "load-file" #'load-file} op))]
                         (fn [msg]
                           (enqueue msg #(f msg))))
