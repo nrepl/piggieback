@@ -25,7 +25,7 @@
                                   [org.clojure/clojurescript "1.9.946"]
                                   [javax.xml.bind/jaxb-api "2.3.1"]]}
 
-             :1.10 {:dependencies [[org.clojure/clojure "1.10.0"]
+             :1.10 {:dependencies [[org.clojure/clojure "1.10.1"]
                                    [org.clojure/clojurescript "1.10.63"]]}
 
              :master {:repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
