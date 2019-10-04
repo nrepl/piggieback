@@ -1,6 +1,6 @@
 .PHONY: test eastwood cljfmt cloverage release deploy clean
 
-VERSION ?= 1.9
+VERSION ?= 1.10
 
 test:
 	set -e; set -x; \
