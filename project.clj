@@ -1,4 +1,4 @@
-(defproject cider/piggieback "0.4.1"
+(defproject cider/piggieback "0.4.2-SNAPSHOT"
   :description "Middleware adding support for running ClojureScript REPLs over nREPL."
   :url "http://github.com/nrepl/piggieback"
   :license {:name "Eclipse Public License"
@@ -50,4 +50,5 @@
              :cljfmt {:plugins [[lein-cljfmt "0.6.1"]]}
 
              :eastwood {:plugins  [[jonase/eastwood "0.3.4"]]
-                        :eastwood {:config-files ["eastwood.clj"]}}})
+                        :eastwood {:config-files ["eastwood.clj"]
+                                   :exclude-linters [:no-ns-form-found]}}})
