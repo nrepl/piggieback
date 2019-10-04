@@ -3,8 +3,7 @@
   {:author "Chas Emerick"}
   (:refer-clojure :exclude [load-file])
   (:require
-    [nrepl.middleware :refer [set-descriptor!]]))
-  
+   [nrepl.middleware :refer [set-descriptor!]]))
 
 (defmacro ^:private if-ns
   [ns body else]
