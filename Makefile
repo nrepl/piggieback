@@ -2,12 +2,6 @@
 
 VERSION ?= 1.9
 
-# Some tests need to be filtered based on JVM version.  This selector
-# will be mapped to a function in project.clj, and that function
-# determines which `deftest` to run based on their metadata.
-JAVA_VERSION := $(shell lein with-profile +sysutils \
-                        sysutils :java-version-simple | cut -d " " -f 2)
-
 test:
 	set -e; set -x; \
 	for v in "nrepl-0.4" "nrepl-0.5" "nrepl-0.6"; do \

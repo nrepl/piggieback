@@ -41,8 +41,6 @@
                            {:source-paths ["env/repl"]
                             :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}]
 
-             :sysutils {:plugins [[lein-sysutils "0.2.0"]]}
-
              :cloverage [:test
                          {:plugins [[lein-cloverage "1.0.13"]]
                           :cloverage {:codecov? true}}]
