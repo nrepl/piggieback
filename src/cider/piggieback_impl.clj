@@ -5,6 +5,7 @@
  '[clojure.main]
  '[clojure.string :as string]
  '[clojure.tools.reader :as reader]
+ '[clojure.tools.reader.edn :as edn-reader]
  '[clojure.tools.reader.reader-types :as readers]
  '[cljs.closure]
  '[cljs.repl]
@@ -51,6 +52,12 @@
    cljs.repl/IPrintStacktrace
    {:-print-stacktrace (fn [repl-env stacktrace err build-options]
                          (cljs.repl/-print-stacktrace (.-repl-env repl-env) stacktrace err build-options))}})
+
+(deftype ^:private UnknownTaggedLiteral [tag data])
+
+(defmethod print-method UnknownTaggedLiteral
+  [^UnknownTaggedLiteral this ^java.io.Writer w]
+  (.write w (str "#" (.tag this) (.data this))))
 
 (defn- generate-delegating-repl-env [repl-env]
   (let [repl-env-class (class repl-env)
@@ -203,12 +210,45 @@
                    (readers/source-logging-push-back-reader
                     (java.io.StringReader. form-str))))))
 
+(defn- wrap-pprint [form]
+  `(let [sb# (goog.string.StringBuffer.)
+         sbw# (cljs.core/StringBufferWriter. sb#)
+         form# ~form]
+     (cljs.pprint/pprint form# sbw#)
+     (cljs.core/str sb#)))
+
+(defn- pprint-repl-wrap-fn [form]
+  (cond
+    (and (seq? form)
+         (#{'ns 'require 'require-macros
+            'use 'use-macros 'import 'refer-clojure} (first form)))
+    identity
+
+    ('#{*1 *2 *3 *e} form) (fn [x]
+                             (wrap-pprint x))
+    :else
+    (fn [x]
+      `(try
+         ~(wrap-pprint
+           `(let [ret# ~x]
+              (set! *3 *2)
+              (set! *2 *1)
+              (set! *1 ret#)
+              ret#))
+         (catch :default e#
+           (set! *e e#)
+           (throw e#))))))
+
 (defn eval-cljs [repl-env env form opts]
   (cljs.repl/evaluate-form repl-env
                            env
                            "<cljs repl>"
                            form
-                           ((:wrap opts #'cljs.repl/wrap-fn) form)
+                           ((:wrap opts
+                                   (if (= (::print opts)
+                                          "cider.nrepl.pprint/pr")
+                                     #'cljs.repl/wrap-fn
+                                     #'pprint-repl-wrap-fn)) form)
                            opts))
 
 (defn- output-bindings [{:keys [session] :as msg}]
@@ -240,7 +280,12 @@
                        (if (and (seq? form) (is-special-fn? (first form)))
                          (do ((get special-fns (first form)) repl-env env form repl-options)
                              nil)
-                         (eval-cljs repl-env env form repl-options)))]
+                         (eval-cljs repl-env
+                                    env
+                                    form
+                                    (assoc repl-options
+                                           ::print
+                                           (:nrepl.middleware.print/print msg)))))]
           (.flush ^Writer *out*)
           (.flush ^Writer *err*)
           (when (and (or (not ns)
@@ -250,10 +295,16 @@
           (transport/send
            transport
            (response-for msg
-                         {:value (or result "nil")
-                          ;; TODO :printed-value was removed in nREPL 0.6.0
-                          :printed-value 1
-                          :ns (get @session #'ana/*cljs-ns*)})))
+                         (try
+                           {:value (when (some? result)
+                                     (edn-reader/read-string
+                                      {:default ->UnknownTaggedLiteral}
+                                      result))
+                            :nrepl.middleware.print/keys #{:value}
+                            :ns (get @session #'ana/*cljs-ns*)}
+                           (catch Exception _
+                             {:value (or result "nil")
+                              :ns (get @session #'ana/*cljs-ns*)})))))
         (catch Throwable t
           (repl-caught session transport msg t repl-env repl-options))))))
 
