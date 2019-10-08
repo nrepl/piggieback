@@ -6,6 +6,7 @@
    [nrepl.middleware :refer [set-descriptor!]]))
 
 (defmacro ^:private if-ns
+  "Evaluate some code conditionally based on the presence of `ns`."
   [ns body else]
   (if (try
         (require ns)
@@ -15,6 +16,8 @@
     `~body
     `~else))
 
+;; Depending on whether ClojureScript is present we load either the real implementation
+;; or a no-op shim.
 (if-ns cljs.repl
        (load "piggieback_impl")
        (load "piggieback_shim"))
