@@ -1,83 +1,87 @@
 # CHANGELOG
 
-## `0.4.1`
+## 0.4.2
+
+* [#107](https://github.com/nrepl/piggieback/pull/107): Make piggieback a no-op when ClojureScript is not loaded.
+
+## 0.4.1
 
 * Fix a bug affecting nREPL 0.6 where `*out*` and `*err` were not reliably bound after session init.
 
-## `0.4.0`
+## 0.4.0
 
 * **(Breaking)** Dropped support for `clojure.tools.nrepl`. `[nrepl "0.4.0"]` is
   now the minimum required version.
 * Add compatibility with nREPL 0.6+.
 
-## `0.3.10`
+## 0.3.10
 
 * [#95](https://github.com/nrepl/piggieback/issues/95): Bind `*cljs-warnings*`.
 * [#97](https://github.com/nrepl/piggieback/pulls/97): Establish a binding to `cljs.analyzer/*unchecked-if*`.
 
-## `0.3.9`
+## 0.3.9
 
 * Honor `:repl-requires` CLJS repl option.
 * Bind `cljs.repl/*repl-env*` to better support CLJS versions newer than 1.10.126.
 
-## `0.3.8`
+## 0.3.8
 
 * Fix the `tools.nrepl` support. (a silly typo had broken it)
 
-## `0.3.7`
+## 0.3.7
 
 * Add compatibility with nREPL 0.4+.
 
-## `0.3.6`
+## 0.3.6
 
 * Allow repl-options to flow through.
 
-## `0.3.5`
+## 0.3.5
 
 * Fix loss of `compiler-env`.
 
-## `0.3.4`
+## 0.3.4
 
 * Fix REPL teardown problem with ClojureScript 1.10.
 
-## `0.3.3`
+## 0.3.3
 
 * Fix REPL teardown problem and bind *out* and *err* for initialization (this affected the node repl).
 
-## `0.3.2`
+## 0.3.2
 
 * Enable `:wrap` repl-option.
 * Enable `:caught` repl-option.
 * Capture `cljs-warning-handlers` so consumers can bind them.
 
-## `0.3.1`
+## 0.3.1
 
 * [#87](https://github.com/nrepl/piggieback/issues/87): Fix a Nashorn regression introduced in 0.2.3.
 
-## `0.3.0`
+## 0.3.0
 
 * Drop support for Rhino.
 * Change the namespace prefix from `cemerick` to `cider`.
 
-## `0.2.3`
+## 0.2.3
 
 * Changed the artefact coordinates to `cider/piggieback`. It's now being deployed
 to Clojars, instead of to Maven Central.
 * [#80](https://github.com/nrepl/piggieback/pull/80): Make eval just eval, instead of creating a new REPL for each evaluation.
 * Piggieback now requires ClojureScript 1.9 and Java 8.
 
-## `0.2.2`
+## 0.2.2
 
 * Removed superfluous Clojure 1.6.0 dependency (gh-70)
 * The current nREPL's session's `*e` binding is now set properly when an
   uncaught exception occurs.
 
-## `0.2.1`
+## 0.2.1
 
 Fixes nREPL load-file support, implementing it in terms of evaluation of the
 `load-file` `cljs.repl` special function.
 
-## `0.2.0`
+## 0.2.0
 
 This release is essentially a rewrite to accommodate the significant changes to
 the upstream ClojureScript REPL infrastructure. Using piggieback is effectively
