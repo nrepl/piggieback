@@ -162,7 +162,8 @@
                        (pr-str (cons 'ns `(cljs.user (:require ~@requires))))
                        (nrepl/code (ns cljs.user
                                      (:require [cljs.repl :refer-macros [source doc find-doc
-                                                                         apropos dir pst]]))))
+                                                                         apropos dir pst]]
+                                               [cljs.pprint]))))
                      repl-env nil options)
       ;; (clojure.pprint/pprint (:options @*cljs-compiler-env*))
       (set! *cljs-repl-env* repl-env)
