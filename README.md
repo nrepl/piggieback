@@ -78,14 +78,15 @@ Add this alias to `~/.clojure/deps.edn`:
 }
 ```
 
-Then you can simply run a ClojureScript capable nREPL like this:
+Then you can simply run a ClojureScript-capable nREPL server like this:
 
 ``` shell
 clj -R:nrepl -m nrepl.cmdline --middleware "[cider.piggieback/wrap-cljs-repl]"
 ```
 
-Afterwards simply connect to the running server with your favourite
-nREPL client (e.g. CIDER).
+When you connect to the running server with with your favourite nREPL client
+(e.g. CIDER), you will be greeted by a Clojure REPL. Within this Clojure REPL,
+you can now [start a ClojureScript REPL](#usage).
 
 ### Embedded
 
@@ -116,6 +117,10 @@ nREPL handler.  Keep two things in mind when doing so:
 
 
 ## Usage
+
+Before you run the following, you must have gone through the [setup
+steps](#installation). Instead of using `lein repl`, you might also connect to a
+headless nREPL using your development environment.
 
 ```
 $ lein repl
