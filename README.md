@@ -84,7 +84,7 @@ Then you can simply run a ClojureScript-capable nREPL server like this:
 clj -R:nrepl -m nrepl.cmdline --middleware "[cider.piggieback/wrap-cljs-repl]"
 ```
 
-When you connect to the running server with with your favourite nREPL client
+When you connect to the running server with your favourite nREPL client
 (e.g. CIDER), you will be greeted by a Clojure REPL. Within this Clojure REPL,
 you can now [start a ClojureScript REPL](#usage).
 
