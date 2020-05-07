@@ -3,7 +3,8 @@
   {:author "Chas Emerick"}
   (:refer-clojure :exclude [load-file])
   (:require
-   [nrepl.middleware :refer [set-descriptor!]]))
+   [nrepl.middleware :refer [set-descriptor!]]
+   [nrepl.middleware.print :as print]))
 
 (defmacro ^:private if-ns
   "Evaluate some code conditionally based on the presence of `ns`."
@@ -23,7 +24,7 @@
        (load "piggieback_shim"))
 
 (set-descriptor! #'wrap-cljs-repl
-                 {:requires #{"clone"}
+                 {:requires #{"clone" #'print/wrap-print}
                   ;; piggieback unconditionally hijacks eval and load-file
                   :expects #{"eval" "load-file"}
                   :handles {}})
