@@ -211,7 +211,10 @@
                    (readers/source-logging-push-back-reader
                     (java.io.StringReader. form-str))))))
 
-(defn- wrap-pprint [form]
+(defn- wrap-pprint
+  "Wraps sexp with cljs.pprint/pprint in order for it to return a
+  pretty-printed evaluation result as a string."
+  [form]
   `(let [sb# (goog.string.StringBuffer.)
          sbw# (cljs.core/StringBufferWriter. sb#)
          form# ~form]
