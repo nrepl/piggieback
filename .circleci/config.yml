@@ -14,7 +14,7 @@ defaults: &defaults
     LEIN_ROOT: "true"   # we intended to run lein as root
     JVM_OPTS: -Xmx3200m # limit the maximum heap size to prevent out of memory errors
 
-# Runners for OpenJDK 8 and 11
+# Runners for OpenJDK 8, 11 and 14
 
 executors:
   openjdk8:
@@ -24,6 +24,10 @@ executors:
   openjdk11:
     docker:
       - image: circleci/clojure:openjdk-11-lein-2.9.1
+    <<: *defaults
+  openjdk14:
+    docker:
+      - image: circleci/clojure:openjdk-14-lein-2.9.1-buster
     <<: *defaults
 
 # Runs a given set of steps, with some standard pre- and post-
@@ -129,7 +133,7 @@ jobs:
 # The ci-test-matrix does the following:
 #
 # - run tests against the target matrix
-#   - Java 8 and 11
+#   - Java 8, 11 and 14
 #   - Clojure 1.8, 1.9, 1.10, master
 # - linter, eastwood and cljfmt
 # - runs code coverage report
@@ -170,6 +174,22 @@ workflows:
           name: Java 11, Clojure master
           clojure_version: "master"
           jdk_version: openjdk11
+      - test_code:
+          name: Java 14, Clojure 1.8
+          clojure_version: "1.8"
+          jdk_version: openjdk14
+      - test_code:
+          name: Java 14, Clojure 1.9
+          clojure_version: "1.9"
+          jdk_version: openjdk14
+      - test_code:
+          name: Java 14, Clojure 1.10
+          clojure_version: "1.10"
+          jdk_version: openjdk14
+      - test_code:
+          name: Java 14, Clojure master
+          clojure_version: "master"
+          jdk_version: openjdk14
       - util_job:
           name: Code Linting
           steps:
