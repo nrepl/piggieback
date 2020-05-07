@@ -33,10 +33,7 @@ original state.
 ## Installation
 
 Piggieback is compatible with Clojure 1.8.0+, and _requires_ ClojureScript
-`1.9` or later and nREPL `0.4.0` or later.
-
-**Note** Piggieback 0.3.7 is the first version compatible with nREPL 0.4+. You need
-Piggieback 0.4+ for nREPL 0.6+.
+`1.9` or later and nREPL `0.6.0` or later.
 
 ### Leiningen
 
@@ -64,7 +61,7 @@ Contributions welcome!
 
 ### Clojure CLI (aka `tools.deps`)
 
-**The instructions below require nREPL 0.4.4 or newer**
+**The instructions below require nREPL 0.6.0 or newer**
 
 Add this alias to `~/.clojure/deps.edn`:
 
