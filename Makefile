@@ -4,7 +4,7 @@ VERSION ?= 1.10
 
 test:
 	set -e; set -x; \
-	for v in "nrepl-0.4" "nrepl-0.5" "nrepl-0.6" "nrepl-0.7"; do \
+	for v in "nrepl-0.6" "nrepl-0.7"; do \
 	  lein with-profile +$(VERSION),+$$v test; \
 	done;
 
@@ -17,7 +17,7 @@ cljfmt:
 cloverage: SHELL := /bin/bash
 cloverage:
 	set -e; set -x; \
-	for v in "nrepl-0.4" "nrepl-0.5" "nrepl-0.6"; do \
+	for v in "nrepl-0.6" "nrepl-0.7"; do \
 	  lein with-profile +$(VERSION),+$$v,+cloverage cloverage; \
 	  if [ ! -z $$CI ] ;\
 	    then bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json ; \

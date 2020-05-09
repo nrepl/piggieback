@@ -15,7 +15,7 @@
 
   :aliases  {"all" ["with-profile" "dev"]}
 
-  :profiles {:provided [:1.8 :nrepl-0.5]
+  :profiles {:provided [:1.8 :nrepl-0.6]
 
              :test {:source-paths ["env/test"]}
 
@@ -34,8 +34,6 @@
                       :dependencies [[org.clojure/clojure "1.11.0-master-SNAPSHOT"]
                                      [org.clojure/clojurescript "1.10.439"]]}
 
-             :nrepl-0.4 {:dependencies [[nrepl/nrepl "0.4.5"]]}
-             :nrepl-0.5 {:dependencies [[nrepl/nrepl "0.5.3"]]}
              :nrepl-0.6 {:dependencies [[nrepl/nrepl "0.6.0"]]}
              :nrepl-0.7 {:dependencies [[nrepl/nrepl "0.7.0"]]}
 

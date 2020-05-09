@@ -33,10 +33,7 @@ original state.
 ## Installation
 
 Piggieback is compatible with Clojure 1.8.0+, and _requires_ ClojureScript
-`1.9` or later and nREPL `0.4.0` or later.
-
-**Note** Piggieback 0.3.7 is the first version compatible with nREPL 0.4+. You need
-Piggieback 0.4+ for nREPL 0.6+.
+`1.9` or later and nREPL `0.6.0` or later.
 
 ### Leiningen
 
@@ -64,7 +61,7 @@ Contributions welcome!
 
 ### Clojure CLI (aka `tools.deps`)
 
-**The instructions below require nREPL 0.4.4 or newer**
+**The instructions below require nREPL 0.6.0 or newer**
 
 Add this alias to `~/.clojure/deps.edn`:
 
@@ -203,6 +200,81 @@ the CIDER group id to avoid further breakages.
 
 For the same reason the main namespace is `cider.piggieback` instead of
 `nrepl.piggieback.`
+
+### Why does pretty printing not always work as one would expect?
+
+Support for pretty printing ClojureScript evaluation results is not
+entirely straightforward. This is because Piggieback mostly relies on
+the underlying nREPL server implementation to support the features of
+the nREPL protocol and on the `cljs.repl/IJavaScriptEnv` interface for
+ClojureScript evaluation.
+
+nREPL 0.6 introduced `nrepl.middleware.print` to facilitate printing
+evaluation results in a configurable way. Since nREPL is implemented
+in Clojure and runs on the JVM, the middleware relies on receiving
+Clojure values for printing them. Conversely when evaluating a
+ClojureScript expression in a JavaScript environment, the resulting
+Clojure value of the evaluation is always a string. If this value
+would simply be passed on as is to the middleware, only the string
+itself could be printed by it instead of the evaluation result within
+the string.
+
+There are multiple approaches for working around this issue with
+various trade-offs. The current implementation has the following main
+considerations:
+
+1. `nrepl.middleware.print` is used to print ClojureScript evaluation
+   results whenever possible, so that the same nREPL (pretty) printing
+   configuration is applied to both Clojure and ClojureScript.
+
+2. For cases where the above is not possible (see below), there is a
+   fallback to support basic pretty printing.
+
+In order to support `nrepl.middleware.print` for ClojureScript
+evaluation results, they first need to be _read_. The resulting
+Clojure values can then be normally printed by the middleware. However
+there are various cases where ClojureScript evaluation results can not
+be read by the default Clojure reader. Some examples:
+
+- Functions: `#object[Function]`
+- Objects: `#object[cljs.user.Cheese]`, `#object[Window [object Window]]`
+- `#js` literals: `#js {:foo 1, :bar 2}`
+- `#queue` literals: `#queue [1 2 3]`
+- Custom tagged literals: `#user/cheese "Pálpusztai"`
+- Types implementing `IPrintWithWriter` in a way that is incompatible
+  with the Clojure reader
+
+To work around some of these cases Piggieback provides its own
+`UnknownTaggedLiteral` type. It is used as the default tag reader when
+reading ClojureScript evaluation results. It doesn't parse the
+contents of the literal and has `print-method` defined to simply print
+the original.
+
+**Note** When a pretty-printer which doesn't rely on `print-method` to
+serialize values (such as fipp, puget, etc.) is used,
+`UnknownTaggedLiteral` will be serialized in the output instead of the
+original literal.
+
+There are still cases left which can prevent the Clojure reader from
+successfully reading ClojureScript evaluation results (mostly custom
+`IPrintWithWriter` implementations). In order to support pretty
+printing these results as well, the ClojureScript expression to be
+evaluated is always wrapped with `cljs.pprint/pprint` (unless
+`:nrepl.middleware.print/print` is set to `cider.nrepl.pprint/pr`, in
+which case `cljs.core/pr` is used instead). This means that whenever
+the Clojure reader fails to read the value for any reason, we can
+safely fall back on an already (pretty) printed string, albeit
+disabling `nrepl.middleware.print` and hence effectively ignoring the
+`nrepl.middleware.print` configuration. Special care is taken that
+output written to `*out*` during evaluation is not affected by the
+wrapping.
+
+For the cases where the (pretty) printing configuration is not being
+applied, the reader probably failed to read the evaluation results and
+the above fallbacks are being used instead.
+
+See the pull request #108 for more background and discussion on the
+current solution.
 
 ## Need Help?
 
