@@ -5,6 +5,7 @@
 * **(Breaking)** Dropped support for nREPL versions 0.4 and 0.5,
   `[nrepl "0.6.0"]` is now the minimum required version.
 * Add support for nREPL print middleware introduced in nREPL 0.6.0
+* Moving away from Nashorn: changed tests and example code to Node.
 
 ## 0.4.2
 
