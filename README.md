@@ -179,29 +179,12 @@ Nashorn, Node, and browser REPLs.
 *Support for Rhino was dropped in version 0.3. All users of Rhino are
 advised to switch to using Nashorn instead.*
 
-## Acknowledgements
+## Design
 
-[Nelson Morris](http://twitter.com/xeqixeqi) was instrumental in the initial
-development of piggieback.
+This section documents some of the main design decisions in Piggieback
+and the differences between similar functionality in nREPL and Piggieback.
 
-## FAQ
-
-### Why "piggieback" instead of "piggyback"?
-
-That's one of life's greatest mysteries. Only Chas can answer that one.
-
-### Why is the artifact group id "cider" instead of "nrepl"?
-
-Bozhidar took over the maintenance of Piggieback before taking over
-the maintenance of nREPL. That's why for a period of time Piggieback lived under
-CIDER's GitHub org and back then it made sense to use CIDER's group id.
-Eventually, it got reunited with nREPL, but we've opted to preserve
-the CIDER group id to avoid further breakages.
-
-For the same reason the main namespace is `cider.piggieback` instead of
-`nrepl.piggieback.`
-
-### Why does pretty printing not always work as one would expect?
+### Pretty-printing
 
 Support for pretty printing ClojureScript evaluation results is not
 entirely straightforward. This is because Piggieback mostly relies on
@@ -276,12 +259,34 @@ the above fallbacks are being used instead.
 See the pull request #108 for more background and discussion on the
 current solution.
 
+## FAQ
+
+### Why "piggieback" instead of "piggyback"?
+
+That's one of life's greatest mysteries. Only Chas can answer that one.
+
+### Why is the artifact group id "cider" instead of "nrepl"?
+
+Bozhidar took over the maintenance of Piggieback before taking over
+the maintenance of nREPL. That's why for a period of time Piggieback lived under
+CIDER's GitHub org and back then it made sense to use CIDER's group id.
+Eventually, it got reunited with nREPL, but we've opted to preserve
+the CIDER group id to avoid further breakages.
+
+For the same reason the main namespace is `cider.piggieback` instead of
+`nrepl.piggieback.`
+
 ## Need Help?
 
 Send a message to the
 [clojure-tools](http://groups.google.com/group/clojure-tools) mailing list, or
 ping `@bhauman` or `@bbatsov` on the Clojurians Slack or Twitter if you
 have questions or would like to contribute patches.
+
+## Acknowledgements
+
+[Nelson Morris](http://twitter.com/xeqixeqi) was instrumental in the initial
+development of piggieback.
 
 ## License
 
