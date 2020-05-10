@@ -243,7 +243,7 @@ successfully reading ClojureScript evaluation results (mostly custom
 `IPrintWithWriter` implementations). In order to support pretty
 printing these results as well, the ClojureScript expression to be
 evaluated is always wrapped with `cljs.pprint/pprint` (unless
-`:nrepl.middleware.print/print` is set to `cider.nrepl.pprint/pr`, in
+`:nrepl.middleware.print/print` is set to `nrepl.util.print/pr` or `cider.nrepl.pprint/pr`, in
 which case `cljs.core/pr` is used instead). This means that whenever
 the Clojure reader fails to read the value for any reason, we can
 safely fall back on an already (pretty) printed string, albeit

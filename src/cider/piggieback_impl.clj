@@ -249,8 +249,7 @@
                            "<cljs repl>"
                            form
                            ((:wrap opts
-                                   (if (= (::print opts)
-                                          "cider.nrepl.pprint/pr")
+                                   (if (contains? #{"nrepl.util.print/pr" "cider.nrepl.pprint/pr"} (::print opts))
                                      #'cljs.repl/wrap-fn
                                      #'pprint-repl-wrap-fn)) form)
                            opts))
