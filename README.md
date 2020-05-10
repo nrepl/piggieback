@@ -256,8 +256,8 @@ For the cases where the (pretty) printing configuration is not being
 applied, the reader probably failed to read the evaluation results and
 the above fallbacks are being used instead.
 
-See the pull request #108 for more background and discussion on the
-current solution.
+**Note:** See [this pull request](https://github.com/nrepl/piggieback/pull/108)
+for more background and discussion on the current solution.
 
 ## FAQ
 
