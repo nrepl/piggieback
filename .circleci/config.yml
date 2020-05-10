@@ -19,15 +19,15 @@ defaults: &defaults
 executors:
   openjdk8:
     docker:
-      - image: circleci/clojure:openjdk-8-lein-2.9.1
+      - image: circleci/clojure:openjdk-8-lein-2.9.1-node
     <<: *defaults
   openjdk11:
     docker:
-      - image: circleci/clojure:openjdk-11-lein-2.9.1
+      - image: circleci/clojure:openjdk-11-lein-2.9.1-node
     <<: *defaults
   openjdk14:
     docker:
-      - image: circleci/clojure:openjdk-14-lein-2.9.1-buster
+      - image: circleci/clojure:openjdk-14-lein-2.9.1-buster-node
     <<: *defaults
 
 # Runs a given set of steps, with some standard pre- and post-

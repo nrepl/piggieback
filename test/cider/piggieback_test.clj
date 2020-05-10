@@ -1,8 +1,7 @@
 (ns cider.piggieback-test
-  (:require
-   [clojure.test :refer :all]
-   [nrepl.core :as nrepl]
-   [nrepl.server :as server]))
+  (:require [clojure.test :refer [deftest is use-fixtures]]
+            [nrepl.core :as nrepl]
+            [nrepl.server :as server]))
 
 (require '[cider.piggieback :as pb])
 
@@ -17,14 +16,10 @@
                                {:op "eval" :code "clojure.core/*ns*"}))))))
 
 (def ^:private cljs-repl-start-code
-  (do (require 'cljs.repl.nashorn)
+  (do (require 'cljs.repl.node)
       (nrepl/code
        (cider.piggieback/cljs-repl
-        (cljs.repl.nashorn/repl-env))))
-  #_(do (require 'cljs.repl.node)
-        (nrepl/code
-         (cider.piggieback/cljs-repl
-          (cljs.repl.node/repl-env)))))
+        (cljs.repl.node/repl-env)))))
 
 (defn repl-server-fixture
   [f]
