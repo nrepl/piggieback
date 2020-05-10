@@ -44,7 +44,10 @@
 
 (deftest default-sanity
   (dorun (nrepl/message *session* {:op "eval" :code "(defn x [] (into [] (js/Array 1 2 3)))"}))
-  (is (= [1 2 3] (->> {:op "eval" :code "(x)"} (nrepl/message *session*) nrepl/response-values first))))
+  (is (= [1 2 3] (->> {:op "eval" :code "(x)"}
+                      (nrepl/message *session*)
+                      nrepl/response-values
+                      first))))
 
 (deftest proper-ns-tracking
   (is (= "cljs.user" (-> (nrepl/message *session* {:op "eval" :code "5"})
