@@ -122,9 +122,9 @@ headless nREPL using your development environment.
 ```
 $ lein repl
 ....
-user=> (require 'cljs.repl.nashorn)
+user=> (require 'cljs.repl.node)
 nil
-user=> (cider.piggieback/cljs-repl (cljs.repl.nashorn/repl-env))
+user=> (cider.piggieback/cljs-repl (cljs.repl.node/repl-env))
 To quit, type: :cljs/quit
 nil
 cljs.user=> (defn <3 [a b] (str a " <3 " b "!"))
@@ -174,10 +174,10 @@ cljs.user=> (<3 "nREPL still" "ClojureScript")
 (The ugly `ThreadDeath` exception will be eliminated eventually.)
 
 Piggieback works well with all known ClojureScript REPL environments, including
-Nashorn, Node, and browser REPLs.
+Node and browser REPLs.
 
-*Support for Rhino was dropped in version 0.3. All users of Rhino are
-advised to switch to using Nashorn instead.*
+*Support for Rhino was dropped in version 0.3., and Nashorn support
+was dropped from ClojureScript in 1.10.741.*
 
 ## Design
 
