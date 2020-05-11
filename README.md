@@ -184,6 +184,82 @@ was dropped from ClojureScript in 1.10.741.*
 This section documents some of the main design decisions in Piggieback
 and the differences between similar functionality in nREPL and Piggieback.
 
+Perhaps the most important thing to remember is that Piggieback is written in
+Clojure and runs on Clojure. It drives ClojureScript evaluation by using
+ClojureScript's Clojure API (`cljs.repl/IJavaScriptEnv`).  This allows you to
+host both Clojure and ClojureScript evaluation sessions on the same nREPL
+server, which is pretty cool. On the other hand it also means that you can't use
+Piggieback with self-hosted ClojureScript REPLs (e.g. Lumo).
+
+**Note:** For self-hosted ClojureScript you'll need an nREPL implementation that can run
+natively on it (e.g. [nrepl-cljs](https://github.com/djblue/nrepl-cljs)).
+
+### No hard dependency on ClojureScript
+
+Piggieback doesn't have a hard dependency on ClojureScript, as users are
+expected to provide the necessary ClojureScript dependency themselves. If
+ClojureScript is not present, Piggieback simply won't do anything (see
+`piggieback_shim.clj` for details).
+
+This allows tools to safely load Piggieback without
+having to consider whether something would blow up.
+
+### Session type based dispatch
+
+Clients don't have to specify explicitly whether they are doing a ClojureScript eval
+operation (e.g. by passing some `:env :cljs` request params). As Piggieback operates
+at the nREPL session level all clients need to do is to pass a Piggieback session
+to ops like `eval` and that would trigger the Piggieback version of those ops.
+
+### Evaluation
+
+As noted above Piggieback provides alternative versions of the standard nREPL
+ops `eval` and `load-file` for ClojureScript evaluation. Due to some differences
+between Clojure and ClojureScript they don't behave exactly the same.
+
+Most notably - for performance reasons we don't spin separate instances of `cljs.repl`
+for each evaluation, as nREPL does for Clojure. In practice this means that if you try
+to evaluate multiple forms together only the first of them would be evaluated:
+
+```clojure
+;; standard ClojureScript REPL behaviour
+cljs.user>
+(declare is-odd?)
+(defn is-even? [n] (if (= n 0) true (is-odd? (dec n))))
+(defn is-odd? [n] (if (= n 0) false (is-even? (dec n))))
+#'cljs.user/is-odd?
+#'cljs.user/is-even?
+#'cljs.user/is-odd?
+cljs.user> (is-even? 4)
+true
+```
+
+Let's compare this to a REPL powered by Piggieback:
+
+```clojure
+cljs.user>
+(declare is-odd?)
+(defn is-even? [n] (if (= n 0) true (is-odd? (dec n))))
+(defn is-odd? [n] (if (= n 0) false (is-even? (dec n))))
+#'cljs.user/is-odd?
+cljs.user> (is-even? 4)
+Compile Warning   <cljs repl>   line:1  column:2
+
+  Use of undeclared Var cljs.user/is-even?
+
+  1  (is-even? 4)
+      ^---
+
+#object[TypeError TypeError: Cannot read property 'call' of undefined]
+	 (<NO_SOURCE_FILE>)
+cljs.user>
+```
+
+Normally that's not a big deal in practice, as you'd rarely want to evaluate multiple expressions together, but it's
+something to be kept in mind.
+
+**Note:** Check out [this discussion](https://github.com/nrepl/piggieback/pull/98) for more details on the subject.
+
 ### Pretty-printing
 
 **Note:** Piggieback introduced support for nREPL's pretty-printing interface
