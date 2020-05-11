@@ -2,25 +2,27 @@
 
 ## unreleased
 
+## 0.5.0 (2020-05-11)
+
 * [#108](https://github.com/nrepl/piggieback/pull/108): **(Breaking)** Dropped support for nREPL versions 0.4 and 0.5, `[nrepl "0.6.0"]` is now the minimum required version.
 * [#108](https://github.com/nrepl/piggieback/pull/108): Added support for nREPL print middleware introduced in nREPL 0.6.0.
 * Moved away from Nashorn: changed tests and example code to Node.
 
-## 0.4.2
+## 0.4.2 (2019-10-08)
 
 * [#107](https://github.com/nrepl/piggieback/pull/107): Make piggieback a no-op when ClojureScript is not loaded.
 
-## 0.4.1
+## 0.4.1 (2019-05-15)
 
 * Fix a bug affecting nREPL 0.6 where `*out*` and `*err` were not reliably bound after session init.
 
-## 0.4.0
+## 0.4.0 (2019-02-05)
 
 * **(Breaking)** Dropped support for `clojure.tools.nrepl`. `[nrepl "0.4.0"]` is
   now the minimum required version.
 * Add compatibility with nREPL 0.6+.
 
-## 0.3.10
+## 0.3.10 (2018-10-21)
 
 * [#95](https://github.com/nrepl/piggieback/issues/95): Bind `*cljs-warnings*`.
 * [#97](https://github.com/nrepl/piggieback/pulls/97): Establish a binding to `cljs.analyzer/*unchecked-if*`.
