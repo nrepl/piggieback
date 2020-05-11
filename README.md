@@ -176,7 +176,7 @@ cljs.user=> (<3 "nREPL still" "ClojureScript")
 Piggieback works well with all known ClojureScript REPL environments, including
 Node and browser REPLs.
 
-*Support for Rhino was dropped in version 0.3., and Nashorn support
+*Support for Rhino was dropped in version 0.3, and Nashorn support
 was dropped from ClojureScript in 1.10.741.*
 
 ## Design
@@ -185,6 +185,9 @@ This section documents some of the main design decisions in Piggieback
 and the differences between similar functionality in nREPL and Piggieback.
 
 ### Pretty-printing
+
+**Note:** Piggieback introduced support for nREPL's pretty-printing interface
+in version 0.5.
 
 Support for pretty printing ClojureScript evaluation results is not
 entirely straightforward. This is because Piggieback mostly relies on
@@ -233,7 +236,7 @@ reading ClojureScript evaluation results. It doesn't parse the
 contents of the literal and has `print-method` defined to simply print
 the original.
 
-**Note** When a pretty-printer which doesn't rely on `print-method` to
+**Note:** When a pretty-printer which doesn't rely on `print-method` to
 serialize values (such as fipp, puget, etc.) is used,
 `UnknownTaggedLiteral` will be serialized in the output instead of the
 original literal.
