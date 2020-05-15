@@ -355,6 +355,22 @@ the CIDER group id to avoid further breakages.
 For the same reason the main namespace is `cider.piggieback` instead of
 `nrepl.piggieback`.
 
+### Does Piggieback work with self-hosted ClojureScript REPLs (e.g. Lumo)?
+
+No, it doesn't. Piggieback is implemented in Clojure and relies on Clojure's ClojureScript evaluation
+API (`cljs.repl/IJavaScriptEnv`).
+
+For self-hosted ClojureScript you'll need a native ClojureScript nREPL implementation like
+[nrepl-cljs](https://github.com/djblue/nrepl-cljs).
+
+### Does shadow-cljs use Piggieback?
+
+No, it doesn't. Unlike `figwheel`, which relies on Piggieback, `shadow-cljs` provides
+its own nREPL middleware. That's why some features of Piggieback (e.g. pretty-printing)
+might not be available with `shadow-cljs`.
+
+You can find `shadow-cljs`'s middleware [here](https://github.com/thheller/shadow-cljs/blob/master/src/main/shadow/cljs/devtools/server/nrepl.clj).
+
 ## Need Help?
 
 Send a message to the
