@@ -353,7 +353,7 @@ Eventually, it got reunited with nREPL, but we've opted to preserve
 the CIDER group id to avoid further breakages.
 
 For the same reason the main namespace is `cider.piggieback` instead of
-`nrepl.piggieback.`
+`nrepl.piggieback`.
 
 ## Need Help?
 
