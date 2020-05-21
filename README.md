@@ -35,6 +35,8 @@ original state.
 Piggieback is compatible with Clojure 1.8.0+, and _requires_ ClojureScript
 `1.9` or later and nREPL `0.6.0` or later.
 
+To use the default Node.js REPL (`cljs.repl.node`) you'll also need to install a recent version of Node.js.
+
 ### Leiningen
 
 These instructions are for Leiningen. Translating them for use in Boot should be
