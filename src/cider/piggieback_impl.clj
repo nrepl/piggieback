@@ -159,7 +159,10 @@
       (run-cljs-repl ieval/*msg*
                      ;; this is needed to respect :repl-requires
                      (if-let [requires (not-empty (:repl-requires opts))]
-                       (pr-str (cons 'ns `(cljs.user (:require ~@requires))))
+                       (pr-str (cons 'ns `(cljs.user (:require ~@requires
+                                                               [~'cljs.repl :refer-macros [~'source ~'doc ~'find-doc
+                                                                                           ~'apropos ~'dir ~'pst]]
+                                                               [~'cljs.pprint]))))
                        (nrepl/code (ns cljs.user
                                      (:require [cljs.repl :refer-macros [source doc find-doc
                                                                          apropos dir pst]]
