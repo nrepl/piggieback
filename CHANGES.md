@@ -2,6 +2,10 @@
 
 ## unreleased
 
+### Bugs fixed
+
+* [#117](https://github.com/nrepl/piggieback/pull/117): Require `cljs.repl` and `cljs.pprint` into `cljs.user` in the case that the repl-env specifies `:repl-requires`.
+
 ## 0.5.0 (2020-05-11)
 
 * [#108](https://github.com/nrepl/piggieback/pull/108): **(Breaking)** Dropped support for nREPL versions 0.4 and 0.5, `[nrepl "0.6.0"]` is now the minimum required version.
