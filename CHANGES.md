@@ -2,6 +2,8 @@
 
 ## unreleased
 
+## 0.5.1 (2020-05-11)
+
 ### Bugs fixed
 
 * [#117](https://github.com/nrepl/piggieback/pull/117): Require `cljs.repl` and `cljs.pprint` into `cljs.user` in the case that the repl-env specifies `:repl-requires`.
