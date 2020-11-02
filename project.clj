@@ -1,4 +1,4 @@
-(defproject cider/piggieback "0.5.1"
+(defproject cider/piggieback "0.5.2"
   :description "Middleware adding support for running ClojureScript REPLs over nREPL."
   :url "http://github.com/nrepl/piggieback"
   :license {:name "Eclipse Public License"
@@ -15,7 +15,10 @@
 
   :aliases  {"all" ["with-profile" "dev"]}
 
-  :profiles {:provided [:1.8 :nrepl-0.6]
+  :profiles {:provided {:dependencies [[org.clojure/clojure "1.8.0"]
+                                       [org.clojure/clojurescript "1.8.51"]
+                                       [javax.xml.bind/jaxb-api "2.3.1"]
+                                       [nrepl/nrepl "0.6.0"]]}
 
              :test {:source-paths ["env/test"]}
 
