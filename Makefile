@@ -19,9 +19,6 @@ cloverage:
 	set -e; set -x; \
 	for v in "nrepl-0.6" "nrepl-0.7"; do \
 	  lein with-profile -user,+$(VERSION),+$$v,+cloverage cloverage; \
-	  if [ ! -z $$CI ] ;\
-	    then bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json ; \
-	  fi ; \
 	done;
 
 # When releasing, the BUMP variable controls which field in the
