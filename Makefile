@@ -5,20 +5,20 @@ VERSION ?= 1.10
 test:
 	set -e; set -x; \
 	for v in "nrepl-0.6" "nrepl-0.7"; do \
-	  lein with-profile +$(VERSION),+$$v test; \
+	  lein with-profile -user,+$(VERSION),+$$v test; \
 	done;
 
 eastwood:
-	lein with-profile +$(VERSION),+eastwood eastwood
+	lein with-profile -user,+$(VERSION),+eastwood eastwood
 
 cljfmt:
-	lein with-profile +$(VERSION),+cljfmt cljfmt check
+	lein with-profile -user,+$(VERSION),+cljfmt cljfmt check
 
 cloverage: SHELL := /bin/bash
 cloverage:
 	set -e; set -x; \
 	for v in "nrepl-0.6" "nrepl-0.7"; do \
-	  lein with-profile +$(VERSION),+$$v,+cloverage cloverage; \
+	  lein with-profile -user,+$(VERSION),+$$v,+cloverage cloverage; \
 	  if [ ! -z $$CI ] ;\
 	    then bash <(curl -s https://codecov.io/bash) -f target/coverage/codecov.json ; \
 	  fi ; \
@@ -31,14 +31,14 @@ cloverage:
 BUMP ?= patch
 
 release:
-	lein with-profile +$(VERSION) release $(BUMP)
+	lein with-profile -user,+$(VERSION) release $(BUMP)
 
 # Deploying requires the caller to set environment variables as
 # specified in project.clj to provide a login and password to the
 # artifact repository.
 
 deploy:
-	lein with-profile +$(VERSION) deploy clojars
+	lein with-profile -user,+$(VERSION) deploy clojars
 
 clean:
 	lein clean
