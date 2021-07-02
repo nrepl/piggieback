@@ -51,6 +51,7 @@
 
              :cljfmt {:plugins [[lein-cljfmt "0.6.1"]]}
 
-             :eastwood {:plugins  [[jonase/eastwood "0.3.4"]]
+             :eastwood {:plugins  [[jonase/eastwood "0.7.1"]]
+                        :global-vars {*warn-on-reflection* true}
                         :eastwood {:config-files ["eastwood.clj"]
                                    :exclude-linters [:no-ns-form-found]}}})
