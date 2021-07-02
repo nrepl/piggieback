@@ -37,21 +37,24 @@
 ;; We have to create a delegating ReplEnv to prevent the call to -tear-down
 ;; this could be avoided if we could override -tear-down only
 
+(defprotocol GetReplEnv
+  (get-repl-env [this]))
+
 (def ^:private cljs-repl-protocol-impls
   {cljs.repl/IReplEnvOptions
-   {:-repl-options (fn [repl-env] (cljs.repl/-repl-options (.-repl-env repl-env)))}
+   {:-repl-options (fn [repl-env] (cljs.repl/-repl-options (get-repl-env repl-env)))}
    cljs.repl/IParseError
    {:-parse-error (fn [repl-env err build-options]
-                    (cljs.repl/-parse-error (.-repl-env repl-env) err build-options))}
+                    (cljs.repl/-parse-error (get-repl-env repl-env) err build-options))}
    cljs.repl/IGetError
    {:-get-error (fn [repl-env name env build-options]
-                  (cljs.repl/-get-error (.-repl-env repl-env) name env build-options))}
+                  (cljs.repl/-get-error (get-repl-env repl-env) name env build-options))}
    cljs.repl/IParseStacktrace
    {:-parse-stacktrace (fn [repl-env stacktrace err build-options]
-                         (cljs.repl/-parse-stacktrace (.-repl-env repl-env) stacktrace err build-options))}
+                         (cljs.repl/-parse-stacktrace (get-repl-env repl-env) stacktrace err build-options))}
    cljs.repl/IPrintStacktrace
    {:-print-stacktrace (fn [repl-env stacktrace err build-options]
-                         (cljs.repl/-print-stacktrace (.-repl-env repl-env) stacktrace err build-options))}})
+                         (cljs.repl/-print-stacktrace (get-repl-env repl-env) stacktrace err build-options))}})
 
 (deftype ^:private UnknownTaggedLiteral [tag data])
 
@@ -67,6 +70,8 @@
      (list*
       'deftype (symbol dclassname)
       '([repl-env]
+        cider.piggieback/GetReplEnv
+        (get-repl-env [this] (.-repl-env this))
         cljs.repl/IJavaScriptEnv
         (-setup [this options] (cljs.repl/-setup repl-env options))
         (-evaluate [this a b c] (cljs.repl/-evaluate repl-env a b c))
@@ -321,7 +326,7 @@
 (defn- evaluate [{:keys [session transport ^String code] :as msg}]
   (if-not (-> code string/trim (string/ends-with? ":cljs/quit"))
     (do-eval msg)
-    (let [actual-repl-env (.-repl-env (@session #'*cljs-repl-env*))]
+    (let [actual-repl-env (get-repl-env (@session #'*cljs-repl-env*))]
       (cljs.repl/-tear-down actual-repl-env)
       (swap! session assoc
              #'*ns* (@session #'*original-clj-ns*)
