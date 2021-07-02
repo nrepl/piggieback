@@ -23,10 +23,11 @@
 
 (defn repl-server-fixture
   [f]
-  (with-open [server (server/start-server
+  (with-open [^nrepl.server.Server
+              server (server/start-server
                       :bind "127.0.0.1"
                       :handler (server/default-handler #'cider.piggieback/wrap-cljs-repl))]
-    (let [port (.getLocalPort (:server-socket server))
+    (let [port (.getLocalPort ^java.net.ServerSocket (:server-socket server))
           conn (nrepl/connect :port port)
           session (nrepl/client-session (nrepl/client conn Long/MAX_VALUE))]
       ;; need to let the dynamic bindings get in place before trying to eval anything that
