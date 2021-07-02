@@ -1,5 +1,4 @@
 [![CircleCI](https://circleci.com/gh/nrepl/piggieback/tree/master.svg?style=svg)](https://circleci.com/gh/nrepl/piggieback/tree/master)
-[![codecov](https://codecov.io/gh/nrepl/piggieback/branch/master/graph/badge.svg)](https://codecov.io/gh/nrepl/piggieback)
 [![Clojars Project](https://img.shields.io/clojars/v/cider/piggieback.svg)](https://clojars.org/cider/piggieback)
 
 # Piggieback
