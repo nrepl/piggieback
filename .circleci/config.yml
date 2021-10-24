@@ -10,24 +10,51 @@ version: 2.1
 
 defaults: &defaults
   working_directory: ~/repo
-  environment:
-    LEIN_ROOT: "true"   # we intended to run lein as root
-    JVM_OPTS: -Xmx3200m # limit the maximum heap size to prevent out of memory errors
 
-# Runners for OpenJDK 8, 11 and 14
+env_defaults: &env_defaults
+  LEIN_ROOT: "true"   # we intended to run lein as root
+
+jdk8_env_defaults: &jdk8_env_defaults
+  JVM_OPTS: -Xmx3200m
+
+newer_jdk_env_defaults: &newer_jdk_env_defaults
+  JVM_OPTS: -Xmx3200m --illegal-access=deny
 
 executors:
   openjdk8:
     docker:
       - image: circleci/clojure:openjdk-8-lein-2.9.1-node
+    environment:
+      <<: *env_defaults
+      <<: *jdk8_env_defaults
     <<: *defaults
   openjdk11:
     docker:
-      - image: circleci/clojure:openjdk-11-lein-2.9.1-node
+        - image: circleci/clojure:openjdk-11-lein-2.9.1-node
+    environment:
+      <<: *env_defaults
+      <<: *newer_jdk_env_defaults
     <<: *defaults
   openjdk14:
     docker:
       - image: circleci/clojure:openjdk-14-lein-2.9.1-buster-node
+    environment:
+      <<: *env_defaults
+      <<: *newer_jdk_env_defaults
+    <<: *defaults
+  openjdk16:
+    docker:
+      - image: circleci/clojure:openjdk-16-lein-2.9.5-buster-node
+    environment:
+      <<: *env_defaults
+      <<: *newer_jdk_env_defaults
+    <<: *defaults
+  openjdk17:
+    docker:
+      - image: circleci/clojure:openjdk-17-lein-2.9.5-buster-node
+    environment:
+      <<: *env_defaults
+      <<: *newer_jdk_env_defaults
     <<: *defaults
 
 # Runs a given set of steps, with some standard pre- and post-
@@ -76,7 +103,6 @@ commands:
           paths:
             - ~/.m2
             - .cpcache
-            - repo
           key: clojure-<< parameters.cache_version >>-{{ checksum "/tmp/clojure_cache_seed" }}
 
 # The jobs are relatively simple. One runs utility commands against
@@ -87,11 +113,11 @@ jobs:
   util_job:
     description: |
       Running utility commands/checks (linter etc.)
-      Always uses Java11 and Clojure 1.10
+      Always uses the latest JDK and Clojure versions
     parameters:
       steps:
         type: steps
-    executor: openjdk11
+    executor: openjdk17
     environment:
       VERSION: "1.10"
     steps:
@@ -99,7 +125,6 @@ jobs:
       - with_cache:
           cache_version: "1.10"
           steps: << parameters.steps >>
-
 
   test_code:
     description: |
@@ -111,13 +136,17 @@ jobs:
       clojure_version:
         description: Version of Clojure to test against
         type: string
+      nrepl_version:
+        description: Version of nrepl to test against
+        type: string
     executor: << parameters.jdk_version >>
     environment:
       VERSION: << parameters.clojure_version >>
+      NREPL_VERSION: << parameters.nrepl_version >>
     steps:
       - checkout
       - with_cache:
-          cache_version: << parameters.clojure_version >>
+          cache_version: << parameters.clojure_version >>|<< parameters.jdk_version >>
           steps:
             - run:
                 name: Running tests
@@ -136,75 +165,25 @@ jobs:
 #   - Java 8, 11 and 14
 #   - Clojure 1.8, 1.9, 1.10, master
 # - linter, eastwood and cljfmt
-# - runs code coverage report
 
 workflows:
   version: 2.1
   ci-test-matrix:
     jobs:
       - test_code:
-          name: Java 8, Clojure 1.8
-          clojure_version: "1.8"
-          jdk_version: openjdk8
-      - test_code:
-          name: Java 8, Clojure 1.9
-          clojure_version: "1.9"
-          jdk_version: openjdk8
-      - test_code:
-          name: Java 8, Clojure 1.10
-          clojure_version: "1.10"
-          jdk_version: openjdk8
-      - test_code:
-          name: Java 8, Clojure master
-          clojure_version: "master"
-          jdk_version: openjdk8
-      - test_code:
-          name: Java 11, Clojure 1.8
-          clojure_version: "1.8"
-          jdk_version: openjdk11
-      - test_code:
-          name: Java 11, Clojure 1.9
-          clojure_version: "1.9"
-          jdk_version: openjdk11
-      - test_code:
-          name: Java 11, Clojure 1.10
-          clojure_version: "1.10"
-          jdk_version: openjdk11
-      - test_code:
-          name: Java 11, Clojure master
-          clojure_version: "master"
-          jdk_version: openjdk11
-      - test_code:
-          name: Java 14, Clojure 1.8
-          clojure_version: "1.8"
-          jdk_version: openjdk14
-      - test_code:
-          name: Java 14, Clojure 1.9
-          clojure_version: "1.9"
-          jdk_version: openjdk14
-      - test_code:
-          name: Java 14, Clojure 1.10
-          clojure_version: "1.10"
-          jdk_version: openjdk14
-      - test_code:
-          name: Java 14, Clojure master
-          clojure_version: "master"
-          jdk_version: openjdk14
+          matrix:
+            parameters:
+              jdk_version: [openjdk8, openjdk11, openjdk14, openjdk16, openjdk17]
+              clojure_version: ["1.8", "1.9", "1.10", "master"]
+              nrepl_version: ["nrepl-0.6", "nrepl-0.7", "nrepl-0.8", "nrepl-0.9"]
       - util_job:
           name: Code Linting
           steps:
             - run:
-                name: Running Eastwood
-                command: |
-                  make eastwood
-            - run:
                 name: Running cljfmt
                 command: |
                   make cljfmt
-      - util_job:
-          name: Code coverage
-          steps:
             - run:
-                name: Running cloverage
+                name: Running Eastwood
                 command: |
-                  make cloverage
+                  make eastwood
