@@ -1,12 +1,10 @@
-.PHONY: test eastwood cljfmt cloverage release deploy clean
+.PHONY: test eastwood cljfmt release deploy clean
 
 VERSION ?= 1.10
+NREPL_VERSION ?= nrepl-0.6
 
 test:
-	set -e; set -x; \
-	for v in "nrepl-0.6" "nrepl-0.7"; do \
-	  lein with-profile -user,+$(VERSION),+$$v test; \
-	done;
+	lein with-profile -user,+$(VERSION),+$(NREPL_VERSION) test;
 
 eastwood:
 	lein with-profile -user,+$(VERSION),+eastwood eastwood
@@ -14,12 +12,9 @@ eastwood:
 cljfmt:
 	lein with-profile -user,+$(VERSION),+cljfmt cljfmt check
 
-cloverage: SHELL := /bin/bash
-cloverage:
-	set -e; set -x; \
-	for v in "nrepl-0.6" "nrepl-0.7"; do \
-	  lein with-profile -user,+$(VERSION),+$$v,+cloverage cloverage; \
-	done;
+cljfmt-fix:
+	lein with-profile -user,+$(VERSION),+cljfmt cljfmt fix
+
 
 # When releasing, the BUMP variable controls which field in the
 # version string will be incremented in the *next* snapshot
