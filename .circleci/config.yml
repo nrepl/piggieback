@@ -14,10 +14,11 @@ defaults: &defaults
 env_defaults: &env_defaults
   LEIN_ROOT: "true"   # we intended to run lein as root
 
-jdk8_env_defaults: &jdk8_env_defaults
+jdk_env_defaults: &jdk_env_defaults
   JVM_OPTS: -Xmx3200m
 
-newer_jdk_env_defaults: &newer_jdk_env_defaults
+# Sets a flag that didn't exist in prior JDKs and that is deprecated in later JDKs.
+jdk11_env_defaults: &jdk11_env_defaults
   JVM_OPTS: -Xmx3200m --illegal-access=deny
 
 executors:
@@ -26,35 +27,21 @@ executors:
       - image: circleci/clojure:openjdk-8-lein-2.9.1-node
     environment:
       <<: *env_defaults
-      <<: *jdk8_env_defaults
+      <<: *jdk_env_defaults
     <<: *defaults
   openjdk11:
     docker:
         - image: circleci/clojure:openjdk-11-lein-2.9.1-node
     environment:
       <<: *env_defaults
-      <<: *newer_jdk_env_defaults
-    <<: *defaults
-  openjdk14:
-    docker:
-      - image: circleci/clojure:openjdk-14-lein-2.9.1-buster-node
-    environment:
-      <<: *env_defaults
-      <<: *newer_jdk_env_defaults
-    <<: *defaults
-  openjdk16:
-    docker:
-      - image: circleci/clojure:openjdk-16-lein-2.9.5-buster-node
-    environment:
-      <<: *env_defaults
-      <<: *newer_jdk_env_defaults
+      <<: *jdk11_env_defaults
     <<: *defaults
   openjdk17:
     docker:
       - image: circleci/clojure:openjdk-17-lein-2.9.5-buster-node
     environment:
       <<: *env_defaults
-      <<: *newer_jdk_env_defaults
+      <<: *jdk_env_defaults
     <<: *defaults
 
 # Runs a given set of steps, with some standard pre- and post-
@@ -162,9 +149,9 @@ jobs:
 # The ci-test-matrix does the following:
 #
 # - run tests against the target matrix
-#   - Java 8, 11 and 14
+#   - Java 8, 11 and 17
 #   - Clojure 1.8, 1.9, 1.10, master
-# - linter, eastwood and cljfmt
+# - linters: eastwood and cljfmt
 
 workflows:
   version: 2.1
@@ -173,7 +160,7 @@ workflows:
       - test_code:
           matrix:
             parameters:
-              jdk_version: [openjdk8, openjdk11, openjdk14, openjdk16, openjdk17]
+              jdk_version: [openjdk8, openjdk11, openjdk17]
               clojure_version: ["1.8", "1.9", "1.10", "master"]
               nrepl_version: ["nrepl-0.6", "nrepl-0.7", "nrepl-0.8", "nrepl-0.9"]
       - util_job:
