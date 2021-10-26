@@ -2,6 +2,10 @@
 
 ## unreleased
 
+## 0.5.3 (2021-10-26)
+
+* Address reflection warnings.
+
 ## 0.5.2 (2020-11-02)
 
 * [#118](https://github.com/nrepl/piggieback/issues/118): Fix bad dependencies in release.
