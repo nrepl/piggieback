@@ -366,17 +366,17 @@ For self-hosted ClojureScript you'll need a native ClojureScript nREPL implement
 
 ### Does shadow-cljs use Piggieback?
 
-No, it doesn't. Unlike `figwheel`, which relies on Piggieback, `shadow-cljs` provides
+No, it doesn't use it. It's most recommended for shadow-cljs users to avoid including the `cider.piggieback/wrap-cljs-repl` middleware.
+
+Unlike `figwheel`, which relies on Piggieback, `shadow-cljs` provides
 its own nREPL middleware. That's why some features of Piggieback (e.g. pretty-printing)
 might not be available with `shadow-cljs`.
 
-You can find `shadow-cljs`'s middleware [here](https://github.com/thheller/shadow-cljs/blob/master/src/main/shadow/cljs/devtools/server/nrepl.clj).
+You can find `shadow-cljs`'s middleware [here](https://github.com/thheller/shadow-cljs/blob/faab284fe45b04328639718583a7d70feb613d26/src/main/shadow/cljs/devtools/server/nrepl.clj).
 
 ## Need Help?
 
-Send a message to the
-[clojure-tools](http://groups.google.com/group/clojure-tools) mailing list, or
-ping `@bhauman` or `@bbatsov` on the Clojurians Slack or Twitter if you
+Feel free to create a Github issue or ask on `#cider` on Clojurians Slack if you
 have questions or would like to contribute patches.
 
 ## Acknowledgements
@@ -386,7 +386,7 @@ development of piggieback.
 
 ## License
 
-Copyright © 2012-2020 Chas Emerick, Bruce Hauman, Bozhidar Batsov and other contributors.
+Copyright © 2012-2023 Chas Emerick, Bruce Hauman, Bozhidar Batsov and other contributors.
 
 Distributed under the Eclipse Public License, the same as Clojure.
 
