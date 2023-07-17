@@ -251,10 +251,10 @@
            (set! *e e#)
            (throw e#))))))
 
-(defn eval-cljs [repl-env env form opts]
+(defn eval-cljs [repl-env env form file opts]
   (cljs.repl/evaluate-form repl-env
                            env
-                           "<cljs repl>"
+                           (or file "<cljs repl>")
                            form
                            ((:wrap opts
                                    (if (contains? #{"nrepl.util.print/pr" "cider.nrepl.pprint/pr"} (::print opts))
@@ -267,7 +267,7 @@
     {#'*out* (replying-PrintWriter :out msg {})
      #'*err* (replying-PrintWriter :err msg {})}))
 
-(defn do-eval [{:keys [session transport ^String code ns] :as msg}]
+(defn do-eval [{:keys [session transport ^String code file ns] :as msg}]
   (with-bindings (merge {#'ana/*cljs-warnings* ana/*cljs-warnings*
                          #'ana/*cljs-warning-handlers* ana/*cljs-warning-handlers*
                          #'ana/*unchecked-if* ana/*unchecked-if*
@@ -294,6 +294,7 @@
                          (eval-cljs repl-env
                                     env
                                     form
+                                    file
                                     (assoc repl-options
                                            ::print
                                            (:nrepl.middleware.print/print msg)))))]
