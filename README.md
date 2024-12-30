@@ -31,8 +31,8 @@ original state.
 
 ## Installation
 
-Piggieback is compatible with Clojure 1.8.0+, and _requires_ ClojureScript
-`1.9` or later and nREPL `0.6.0` or later.
+Piggieback is compatible with Clojure 1.10.0+, and _requires_ ClojureScript
+`1.10` or later and nREPL `1.0.0` or later.
 
 To use the default Node.js REPL (`cljs.repl.node`) you'll also need to install a recent version of Node.js.
 
@@ -62,7 +62,7 @@ Contributions welcome!
 
 ### Clojure CLI (aka `tools.deps`)
 
-**The instructions below require nREPL 0.6.0 or newer**
+**The instructions below require nREPL 1.0.0 or newer**
 
 Add this alias to `~/.clojure/deps.edn`:
 
@@ -71,7 +71,7 @@ Add this alias to `~/.clojure/deps.edn`:
 ;; ...
 :aliases {:nrepl
           {:extra-deps
-            {nrepl/nrepl {:mvn/version "0.8.3"}
+            {nrepl/nrepl {:mvn/version "1.3.0"}
              cider/piggieback {:mvn/version "0.5.3"}}}}
 }
 ```

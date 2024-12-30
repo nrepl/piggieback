@@ -13,32 +13,25 @@
                                     :password :env/clojars_password
                                     :sign-releases false}]]
 
-  :profiles {:provided {:dependencies [[org.clojure/clojure "1.8.0"]
-                                       [org.clojure/clojurescript "1.8.51"]
-                                       [javax.xml.bind/jaxb-api "2.3.1"]
-                                       [nrepl/nrepl "0.6.0"]]}
+  :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.0"]
+                                       [org.clojure/clojurescript "1.11.132"]
+                                       [nrepl/nrepl "1.0.0"]]}
 
              :test {:source-paths ["env/test"]}
-
-             :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]
-                                  [org.clojure/clojurescript "1.8.51"]
-                                  [javax.xml.bind/jaxb-api "2.3.1"]]}
-
-             :1.9 {:dependencies [[org.clojure/clojure "1.9.0"]
-                                  [org.clojure/clojurescript "1.9.946"]
-                                  [javax.xml.bind/jaxb-api "2.3.1"]]}
 
              :1.10 {:dependencies [[org.clojure/clojure "1.10.3"]
                                    [org.clojure/clojurescript "1.10.63"]]}
 
-             :master {:repositories [["snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]]
-                      :dependencies [[org.clojure/clojure "1.11.0-master-SNAPSHOT"]
-                                     [org.clojure/clojurescript "1.10.879"]]}
+             :1.11 {:dependencies [[org.clojure/clojure "1.11.4"]
+                                   [org.clojure/clojurescript "1.11.132"]]}
 
-             :nrepl-0.6 {:dependencies [[nrepl/nrepl "0.6.0"]]}
-             :nrepl-0.7 {:dependencies [[nrepl/nrepl "0.7.0"]]}
-             :nrepl-0.8 {:dependencies [[nrepl/nrepl "0.8.3"]]}
-             :nrepl-0.9 {:dependencies [[nrepl/nrepl "0.9.0-beta3"]]}
+             :1.12 {:dependencies [[org.clojure/clojure "1.12.0"]
+                                   [org.clojure/clojurescript "1.11.132"]]}
+
+             :nrepl-1.0 {:dependencies [[nrepl/nrepl "1.0.0"]]}
+             :nrepl-1.1 {:dependencies [[nrepl/nrepl "1.1.1"]]}
+             :nrepl-1.2 {:dependencies [[nrepl/nrepl "1.2.0"]]}
+             :nrepl-1.3 {:dependencies [[nrepl/nrepl "1.3.0"]]}
 
              ;; Need ^:repl because of: https://github.com/technomancy/leiningen/issues/2132
              :repl ^:repl [:test
