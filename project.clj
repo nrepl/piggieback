@@ -20,7 +20,7 @@
              :test {:source-paths ["env/test"]}
 
              :1.10 {:dependencies [[org.clojure/clojure "1.10.3"]
-                                   [org.clojure/clojurescript "1.10.63"]]}
+                                   [org.clojure/clojurescript "1.10.914"]]}
 
              :1.11 {:dependencies [[org.clojure/clojure "1.11.4"]
                                    [org.clojure/clojurescript "1.11.132"]]}

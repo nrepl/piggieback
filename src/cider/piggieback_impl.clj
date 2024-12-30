@@ -109,6 +109,7 @@
 (defn repl-caught [session transport nrepl-msg err repl-env repl-options]
   (let [root-ex (#'clojure.main/root-cause err)]
     (when-not (instance? ThreadDeath root-ex)
+      (set! *e err)
       (swap! session assoc #'*e err)
       (transport/send transport (response-for nrepl-msg {:status :eval-error
                                                          :ex (-> err class str)
@@ -187,20 +188,12 @@
       (throw e))))
 
 (defn- enqueue [{:keys [id session transport] :as msg} func]
-  (if-let [queue-eval (resolve 'nrepl.middleware.interruptible-eval/queue-eval)]
-    ;; nrepl 0.4.x / 0.5.x
-    ;; mostly a copy/paste from interruptible-eval
-    (queue-eval session @@(resolve 'nrepl.middleware.interruptible-eval/default-executor)
-                (fn []
-                  (alter-meta! session assoc
-                               :thread (Thread/currentThread)
-                               :eval-msg msg)
-                  (binding [ieval/*msg* msg]
-                    (func)
-                    (transport/send transport (response-for msg :status :done))
-                    (alter-meta! session dissoc :thread :eval-msg))))
-    ;; nrepl 0.6.x
-    (let [{:keys [exec]} (meta session)]
+  (let [{:keys [exec]} (meta session)]
+    ;; Binding *msg* outside of :exec is the correct way to pass msg in nREPL
+    ;; 1.3+ (actually, the correct way is to pass msg as the fourth argument,
+    ;; but binding *msg* works too). Binding it inside of `f` is needed in nREPL
+    ;; <1.3. We do both to be compatible with either.
+    (binding [ieval/*msg* msg]
       (exec id
             #(binding [ieval/*msg* msg]
                (func))
@@ -267,15 +260,19 @@
     {#'*out* (replying-PrintWriter :out msg {})
      #'*err* (replying-PrintWriter :err msg {})}))
 
+(def nrepl-1-3+? (some? (resolve 'ieval/evaluator)))
+
 (defn do-eval [{:keys [session transport ^String code ns] :as msg}]
   (with-bindings (merge {#'ana/*cljs-warnings* ana/*cljs-warnings*
                          #'ana/*cljs-warning-handlers* ana/*cljs-warning-handlers*
                          #'ana/*unchecked-if* ana/*unchecked-if*
-                         #'env/*compiler* (get @session #'*cljs-compiler-env*)}
-                        ;; *repl-env* was added in CLJS 1.10.126
-                        (when-let [v (find-var 'cljs.repl/*repl-env*)]
-                          {v (get @session #'*cljs-repl-env*)})
-                        @session
+                         #'env/*compiler* (get @session #'*cljs-compiler-env*)
+                         #'cljs.repl/*repl-env* (get @session #'*cljs-repl-env*)}
+                        ;; ieval/evaluator appeared in nREPL 1.3 where session
+                        ;; contents are already bound by session middleware and
+                        ;; should NOT be rebound here.
+                        (when-not nrepl-1-3+?
+                          @session)
                         (when ns
                           {#'ana/*cljs-ns* (symbol ns)})
                         (output-bindings msg))
@@ -326,19 +323,21 @@
 (defn- evaluate [{:keys [session transport ^String code] :as msg}]
   (if-not (-> code string/trim (string/ends-with? ":cljs/quit"))
     (do-eval msg)
-    (let [actual-repl-env (get-repl-env (@session #'*cljs-repl-env*))]
+
+    (let [actual-repl-env (get-repl-env (@session #'*cljs-repl-env*))
+          orig-ns (@session #'*original-clj-ns*)]
       (cljs.repl/-tear-down actual-repl-env)
       (swap! session assoc
-             #'*ns* (@session #'*original-clj-ns*)
+             #'*ns* orig-ns
              #'*cljs-repl-env* nil
              #'*cljs-compiler-env* nil
              #'*cljs-repl-options* nil
              #'ana/*cljs-ns* 'cljs.user)
+      (when (thread-bound? #'*ns*)
+        (set! *ns* orig-ns))
       (transport/send transport (response-for msg
                                               :value "nil"
-                                              ;; TODO :printed-value was removed in nREPL 0.6.0
-                                              :printed-value 1
-                                              :ns (str (@session #'*original-clj-ns*)))))))
+                                              :ns (str orig-ns))))))
 
 ;; struggled for too long trying to interface directly with cljs.repl/load-file,
 ;; so just mocking a "regular" load-file call
@@ -359,12 +358,12 @@
                           (enqueue msg #(f msg))))
                       handler)]
       ;; ensure that bindings exist so cljs-repl can set!
-      (when-not (contains? @session #'*cljs-repl-env*)
+      (when-not (@session #'*cljs-repl-env*)
         (swap! session (partial merge {#'*cljs-repl-env* *cljs-repl-env*
                                        #'*cljs-compiler-env* *cljs-compiler-env*
                                        #'*cljs-repl-options* *cljs-repl-options*
                                        #'*cljs-warnings* *cljs-warnings*
                                        #'*cljs-warning-handlers* *cljs-warning-handlers*
-                                       #'*original-clj-ns* *original-clj-ns*
+                                       #'*original-clj-ns* *ns*
                                        #'ana/*cljs-ns* ana/*cljs-ns*})))
       (handler msg))))

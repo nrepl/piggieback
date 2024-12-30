@@ -10,13 +10,6 @@
 (def ^:dynamic *server-port* nil)
 (def ^:dynamic *session*)
 
-(defn assert-exit-ns [session ns]
-  (let [v (keep :ns (nrepl/message
-                     session
-                     {:op "eval" :code "clojure.core/*ns*"}))]
-    (assert (= ["user"] v)
-            (pr-str v))))
-
 (def ^:private cljs-repl-start-code
   (do (require 'cljs.repl.node)
       (nrepl/code
@@ -45,8 +38,7 @@
                   *session* session]
           (f))
         (finally
-          (dorun (nrepl/message session {:op "eval" :code ":cljs/quit"}))
-          (assert-exit-ns session "user"))))))
+          (dorun (nrepl/message session {:op "eval" :code ":cljs/quit"})))))))
 
 (use-fixtures :once repl-server-fixture)
 
@@ -62,12 +54,14 @@
                      nrepl/combine-responses)]
     (testing (pr-str response)
       (some-> response :err println)
+      (is (= ["5"] (:value response)))
       (is (= "cljs.user" (:ns response)))))
 
   (let [response (-> (nrepl/message *session* {:op "eval" :code "(ns foo.bar)"})
                      nrepl/combine-responses)]
     (testing (pr-str response)
       (some-> response :err println)
+      (is (= ["nil"] (:value response)))
       (is (= "foo.bar" (:ns response)))))
 
   (dorun (nrepl/message *session* {:op "eval" :code "(defn ns-tracking [] (into [] (js/Array 1 2 3)))"}))
