@@ -161,8 +161,8 @@ workflows:
           matrix:
             parameters:
               jdk_version: [openjdk8, openjdk11, openjdk17]
-              clojure_version: ["1.8", "1.9", "1.10", "master"]
-              nrepl_version: ["nrepl-0.6", "nrepl-0.7", "nrepl-0.8", "nrepl-0.9"]
+              clojure_version: ["1.10", "1.11", "1.12"]
+              nrepl_version: ["nrepl-1.0", "nrepl-1.1", "nrepl-1.2"]
       - util_job:
           name: Code Linting
           steps:
