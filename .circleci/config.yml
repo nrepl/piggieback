@@ -1,176 +1,58 @@
+# Use the latest 2.1 version of CircleCI pipeline process engine.
+# See: https://circleci.com/docs/configuration-reference
+
+# For a detailed guide to building and testing with clojure, read the docs:
+# https://circleci.com/docs/language-clojure/ for more details
 version: 2.1
 
-######################################################################
-#
-# Start of general purpose config. These can plausibly go into orbs
-#
-######################################################################
-
-# Default settings for executors
-
-defaults: &defaults
-  working_directory: ~/repo
-
-env_defaults: &env_defaults
-  LEIN_ROOT: "true"   # we intended to run lein as root
-
-jdk_env_defaults: &jdk_env_defaults
-  JVM_OPTS: -Xmx3200m
-
-# Sets a flag that didn't exist in prior JDKs and that is deprecated in later JDKs.
-jdk11_env_defaults: &jdk11_env_defaults
-  JVM_OPTS: -Xmx3200m --illegal-access=deny
-
-executors:
-  openjdk8:
+# Define a job to be invoked later in a workflow.
+# See: https://circleci.com/docs/jobs-steps/#jobs-overview & https://circleci.com/docs/configuration-reference/#jobs
+jobs:
+  build:
+    # Specify the execution environment. You can specify an image from Docker Hub or use one of our convenience images from CircleCI's Developer Hub.
+    # See: https://circleci.com/docs/executor-intro/ & https://circleci.com/docs/configuration-reference/#executor-job
     docker:
-      - image: circleci/clojure:openjdk-8-lein-2.9.1-node
-    environment:
-      <<: *env_defaults
-      <<: *jdk_env_defaults
-    <<: *defaults
-  openjdk11:
-    docker:
-        - image: circleci/clojure:openjdk-11-lein-2.9.1-node
-    environment:
-      <<: *env_defaults
-      <<: *jdk11_env_defaults
-    <<: *defaults
-  openjdk17:
-    docker:
-      - image: circleci/clojure:openjdk-17-lein-2.9.5-buster-node
-    environment:
-      <<: *env_defaults
-      <<: *jdk_env_defaults
-    <<: *defaults
+      # Specify the version you desire here
+      # See: https://circleci.com/developer/images/image/cimg/clojure
+      - image: cimg/clojure:1.11.1
 
-# Runs a given set of steps, with some standard pre- and post-
-# steps, including restoring of cache, saving of cache.
-#
-# we also install `make` here.
-#
-# Adapted from https://github.com/lambdaisland/meta/blob/master/circleci/clojure_orb.yml
+      # Specify service dependencies here if necessary
+      # CircleCI maintains a library of pre-built images
+      # documented at https://circleci.com/docs/circleci-images/
+      # - image: circleci/postgres:9.4
 
-commands:
-  with_cache:
-    description: |
-      Run a set of steps with Maven dependencies and Clojure classpath cache
-      files cached.
-      This command restores ~/.m2 and .cpcache if they were previously cached,
-      then runs the provided steps, and finally saves the cache.
-      The cache-key is generated based on the contents of `deps.edn` present in
-      the `working_directory`.
-    parameters:
-      steps:
-        type: steps
-      files:
-        description: Files to consider when creating the cache key
-        type: string
-        default: "deps.edn project.clj build.boot"
-      cache_version:
-        type: string
-        description: "Change this value to force a cache update"
-        default: "1"
+    environment:
+      LEIN_ROOT: "true"
+      # Customize the JVM maximum heap limit
+      JVM_OPTS: -Xmx3200m
+
+    # Add steps to the job
+    # See: https://circleci.com/docs/jobs-steps/#steps-overview & https://circleci.com/docs/configuration-reference/#steps
     steps:
-      - run:
-          name: Install make
-          command: |
-            sudo apt-get install make
-      - run:
-          name: Generate Cache Checksum
-          command: |
-            for file in << parameters.files >>
-            do
-              find . -name $file -exec cat {} +
-            done | shasum | awk '{print $1}' > /tmp/clojure_cache_seed
+      # Checkout the code as the first step.
+      - checkout
+
+      # Download and cache dependencies
       - restore_cache:
-          key: clojure-<< parameters.cache_version >>-{{ checksum "/tmp/clojure_cache_seed" }}
-      - steps: << parameters.steps >>
+          keys:
+            - v1-dependencies-{{ checksum "project.clj" }}
+            # fallback to using the latest cache if no exact match is found
+            - v1-dependencies-
+
+      - run: lein deps
+
       - save_cache:
           paths:
             - ~/.m2
-            - .cpcache
-          key: clojure-<< parameters.cache_version >>-{{ checksum "/tmp/clojure_cache_seed" }}
+          key: v1-dependencies-{{ checksum "project.clj" }}
 
-# The jobs are relatively simple. One runs utility commands against
-# latest stable JDK + Clojure, the other against specified versions
+      # run tests!
+      - run: lein test
 
-jobs:
-
-  util_job:
-    description: |
-      Running utility commands/checks (linter etc.)
-      Always uses the latest JDK and Clojure versions
-    parameters:
-      steps:
-        type: steps
-    executor: openjdk17
-    environment:
-      VERSION: "1.10"
-    steps:
-      - checkout
-      - with_cache:
-          cache_version: "1.10"
-          steps: << parameters.steps >>
-
-  test_code:
-    description: |
-      Run tests against given version of JDK and Clojure
-    parameters:
-      jdk_version:
-        description: Version of JDK to test against
-        type: string
-      clojure_version:
-        description: Version of Clojure to test against
-        type: string
-      nrepl_version:
-        description: Version of nrepl to test against
-        type: string
-    executor: << parameters.jdk_version >>
-    environment:
-      VERSION: << parameters.clojure_version >>
-      NREPL_VERSION: << parameters.nrepl_version >>
-    steps:
-      - checkout
-      - with_cache:
-          cache_version: << parameters.clojure_version >>|<< parameters.jdk_version >>
-          steps:
-            - run:
-                name: Running tests
-                command: make test
-
-######################################################################
-#
-# End general purpose configs
-#
-######################################################################
-
-
-# The ci-test-matrix does the following:
-#
-# - run tests against the target matrix
-#   - Java 8, 11 and 17
-#   - Clojure 1.8, 1.9, 1.10, master
-# - linters: eastwood and cljfmt
-
+# Orchestrate jobs using workflows
+# See: https://circleci.com/docs/workflows/ & https://circleci.com/docs/configuration-reference/#workflows
 workflows:
-  version: 2.1
-  ci-test-matrix:
+  sample: # This is the name of the workflow, feel free to change it to better match your workflow.
+    # Inside the workflow, you define the jobs you want to run.
     jobs:
-      - test_code:
-          matrix:
-            parameters:
-              jdk_version: [openjdk8, openjdk11, openjdk17]
-              clojure_version: ["1.8", "1.9", "1.10", "master"]
-              nrepl_version: ["nrepl-0.6", "nrepl-0.7", "nrepl-0.8", "nrepl-0.9"]
-      - util_job:
-          name: Code Linting
-          steps:
-            - run:
-                name: Running cljfmt
-                command: |
-                  make cljfmt
-            - run:
-                name: Running Eastwood
-                command: |
-                  make eastwood
+      - build
