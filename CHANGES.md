@@ -2,6 +2,8 @@
 
 ## unreleased
 
+## 0.6.0 (2021-12-31)
+
 * Bump minimal supported nREPL version to 1.0.
 * Bump minimal supported Clojure and ClojureScript versions to 1.10.
 * Restore compatibility with nREPL 1.3.
