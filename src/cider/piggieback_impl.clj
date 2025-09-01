@@ -310,10 +310,10 @@
                                       {:default ->UnknownTaggedLiteral}
                                       result))
                             :nrepl.middleware.print/keys #{:value}
-                            :ns (get @session #'ana/*cljs-ns*)}
+                            :ns ana/*cljs-ns*}
                            (catch Exception _
                              {:value (or result "nil")
-                              :ns (get @session #'ana/*cljs-ns*)})))))
+                              :ns ana/*cljs-ns*})))))
         (catch Throwable t
           (repl-caught session transport msg t repl-env repl-options))))))
 
