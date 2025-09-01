@@ -70,7 +70,8 @@
                      nrepl/combine-responses)]
     (testing (pr-str response)
       (some-> response :err println)
-      (is (= ["[1 2 3]"] (:value response)))))
+      (is (= ["[1 2 3]"] (:value response)))
+      (is (= "foo.bar" (:ns response)))))
 
   ;; TODO emit a response message to in-ns, doesn't seem to hit eval....
   (let [response (-> (nrepl/message *session* {:op "eval" :code "(in-ns 'cljs.user)"})
@@ -90,7 +91,7 @@
     (testing (pr-str response)
       (some-> response :err println)
       (is (= ["[1 2 3]"] (:value response)))
-      (is (= "cljs.user" (:ns response)))))
+      (is (= "foo.bar" (:ns response)))))
 
   (let [response (-> (nrepl/message *session* {:op "eval" :code "(ns foo.bar)" :ns "cljs.user"})
                      nrepl/combine-responses)]
@@ -103,4 +104,10 @@
                      nrepl/combine-responses)]
     (testing (pr-str response)
       (some-> response :err println)
-      (is (:value response)))))
+      (is (:value response))
+      (is (= "foo.bar" (:ns response)))))
+
+  (let [response (-> (nrepl/message *session* {:op "eval" :code "(in-ns 'cljs.user)"})
+                     nrepl/combine-responses)]
+    (testing (pr-str response)
+      (is (= "cljs.user" (:ns response))))))
