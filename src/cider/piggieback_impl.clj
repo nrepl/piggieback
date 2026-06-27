@@ -198,7 +198,12 @@
                 {:def-emits-var true}
                 (cljs.closure/add-implicit-options
                  (merge-with (fn [a b] (if (nil? b) a b))
-                             repl-opts options)))]
+                             repl-opts options)))
+          ;; Create the compiler env up front and hand it to the repl loop so we
+          ;; always hold a reference to it, even if the setup eval errors and the
+          ;; loop's :print callback (which would otherwise capture it) never runs
+          ;; (issue #62).
+          compiler-env (or (:compiler-env options) (env/default-compiler-env opts))]
       (set! ana/*cljs-ns* 'cljs.user)
       (let [out-target (atom *out*)
             err-target (atom *err*)]
@@ -219,10 +224,13 @@
                                          (:require [cljs.repl :refer-macros [source doc find-doc
                                                                              apropos dir pst]]
                                                    [cljs.pprint]))))
-                         repl-env nil options))
+                         repl-env compiler-env options))
         (set! *cljs-out-target* out-target)
         (set! *cljs-err-target* err-target))
       ;; (clojure.pprint/pprint (:options @*cljs-compiler-env*))
+      ;; Record the compiler env unconditionally, in case the setup eval errored
+      ;; and the :print callback never set it (issue #62).
+      (set! *cljs-compiler-env* compiler-env)
       (set! *cljs-repl-env* repl-env)
       (set! *cljs-repl-options* opts)
       ;; interruptible-eval is in charge of emitting the final :ns response in this context
