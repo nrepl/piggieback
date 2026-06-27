@@ -111,3 +111,45 @@
                      nrepl/combine-responses)]
     (testing (pr-str response)
       (is (= "cljs.user" (:ns response))))))
+
+;; The forwarding writer stands in for *out*/*err* while the repl env is set up,
+;; so it must cope with every way Clojure and the repl env write to it, not just
+;; the (char[], off, len) arity the Node output pump happens to use.
+(deftest forwarding-writer-handles-all-write-arities
+  (let [sink (java.io.StringWriter.)
+        ^java.io.Writer fw (#'cider.piggieback/forwarding-writer (atom sink))]
+    (.write fw (int \A))
+    (.write fw "bc")
+    (.write fw (char-array "de"))
+    (.write fw "XfgY" 1 2)
+    (.append fw \h)
+    (.append fw "ij")
+    (binding [*out* fw] (print "k") (pr {:l 1}) (flush))
+    (is (= "Abcdefghijk{:l 1}" (str sink)))))
+
+;; Regression test for https://github.com/nrepl/piggieback/issues/111
+;;
+;; ClojureScript output used to be tagged with the message that started the REPL
+;; instead of the message that produced it, so `nrepl/message` (which filters by
+;; id) never saw it, and it vanished entirely once that connection was closed.
+;;
+;; The reconnection case is exercised over a fresh connection to the SAME server
+;; and session as the fixture; spinning up a second `cljs.repl.node` REPL in the
+;; same JVM is not an option, as the Node env keys its eval state on a global
+;; that collapses all nREPL threads together.
+(deftest output-routing
+  (testing "output arrives associated with the evaluating message, not the REPL-starting one"
+    (let [response (-> (nrepl/message *session* {:op "eval" :code "(println \"hey\")"})
+                       nrepl/combine-responses)]
+      (testing (pr-str response)
+        (is (= "hey\n" (:out response))))))
+
+  (testing "output still arrives after reconnecting to the session on a new connection"
+    (let [sess-id (-> (nrepl/message *session* {:op "eval" :code "1"}) first :session)]
+      (with-open [^java.io.Closeable conn (nrepl/connect :port *server-port*)]
+        (let [session (nrepl/client-session (nrepl/client conn Long/MAX_VALUE)
+                                            :session sess-id)
+              response (-> (nrepl/message session {:op "eval" :code "(println \"reconnected\")"})
+                           nrepl/combine-responses)]
+          (testing (pr-str response)
+            (is (= "reconnected\n" (:out response)))))))))
