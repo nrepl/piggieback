@@ -2,6 +2,7 @@
 
 ## unreleased
 
+* [#62](https://github.com/nrepl/piggieback/issues/62): Keep evaluation working after a REPL setup error by always recording the compiler env.
 * [#111](https://github.com/nrepl/piggieback/issues/111): Fix ClojureScript output being tagged with the REPL-starting message's id and vanishing after reconnecting to a session.
 
 ## 0.6.1 (2025-12-31)
