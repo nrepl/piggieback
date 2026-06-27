@@ -2,6 +2,8 @@
 
 ## unreleased
 
+## 0.6.2 (2026-06-27)
+
 * [#124](https://github.com/nrepl/piggieback/issues/124): Throw a clear error when `cljs-repl` is invoked outside of an nREPL session (e.g. from Leiningen's `:repl-options :init`) instead of a cryptic "Can't change/establish root binding".
 * [#120](https://github.com/nrepl/piggieback/issues/120): Fix printing of unknown tagged literals (a space was missing after the tag and string data lost its quotes).
 * [#62](https://github.com/nrepl/piggieback/issues/62): Keep evaluation working after a REPL setup error by always recording the compiler env.
