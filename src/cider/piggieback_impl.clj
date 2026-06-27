@@ -193,6 +193,20 @@
   "Starts a ClojureScript REPL over top an nREPL session.  Accepts
    all options usually accepted by e.g. cljs.repl/repl."
   [repl-env & {:as options}]
+  ;; cljs-repl stores its state with `set!` on dynamic vars that the nREPL
+  ;; session middleware establishes per message. Called outside of a session -
+  ;; e.g. from Leiningen's :repl-options :init, which runs at startup before any
+  ;; session exists - those vars have no thread binding and `set!` fails with a
+  ;; cryptic "Can't change/establish root binding" error (issue #124). Fail fast
+  ;; with an actionable message instead.
+  (when-not (thread-bound? #'*cljs-repl-env*)
+    (throw (ex-info
+            (str "cider.piggieback/cljs-repl must be invoked from within an nREPL "
+                 "session, e.g. by evaluating it at a REPL connected to an nREPL "
+                 "server that has the wrap-cljs-repl middleware. It cannot be "
+                 "started from a plain Clojure REPL or from Leiningen's "
+                 ":repl-options :init, both of which run outside of any session.")
+            {:repl-env repl-env})))
   (try
     (let [repl-opts (cljs.repl/-repl-options repl-env)
           repl-env (delegating-repl-env repl-env)
