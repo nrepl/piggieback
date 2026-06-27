@@ -1,0 +1,27 @@
+;; Piggieback has no hard runtime dependencies: nREPL is provided by the host
+;; nREPL server and ClojureScript is provided by the consuming project. The
+;; aliases below supply those (plus a test runner) for local development and CI.
+;;
+;; project.clj remains the source of truth for releases and the full version
+;; matrix; this file exists so the project builds and tests under the Clojure CLI.
+{:paths ["src"]
+ :deps {}
+
+ :aliases
+ {;; Latest stable versions, used for `clj -M:dev` and as the default test deps.
+  :dev
+  {:extra-paths ["env/repl"]
+   :extra-deps {org.clojure/clojure {:mvn/version "1.12.0"}
+                org.clojure/clojurescript {:mvn/version "1.12.145"}
+                nrepl/nrepl {:mvn/version "1.7.0"}}}
+
+  ;; Run the test suite: `clj -X:test`
+  :test
+  {:extra-paths ["test" "env/test"]
+   :extra-deps {org.clojure/clojure {:mvn/version "1.12.0"}
+                org.clojure/clojurescript {:mvn/version "1.12.145"}
+                nrepl/nrepl {:mvn/version "1.7.0"}
+                io.github.cognitect-labs/test-runner
+                {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
+   :main-opts ["-m" "cognitect.test-runner"]
+   :exec-fn cognitect.test-runner.api/test}}}
