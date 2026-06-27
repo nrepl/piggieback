@@ -15,8 +15,8 @@ Two reasons:
 tutorial) assumes that it is running in a teletype environment. This works fine
 with nREPL tools in that environment (e.g. `lein repl` in `Terminal.app` or
 `gnome-terminal`, etc), but isn't suitable for development environments that
-have richer interaction models (including editors like vim ([vim-fireplace][]) and Emacs
-([CIDER][]), and IDEs like Intellij ([Cursive][]) and Eclipse ([Counterclockwise][CCW])).
+have richer interaction models (including editors like Vim ([vim-fireplace][]) and Emacs
+([CIDER][]), and IDEs like IntelliJ ([Cursive][])).
 
 * Most of the more advanced tool support for Clojure and ClojureScript (code
   completion, introspection and inspector utilities, refactoring tools, etc) is
@@ -26,13 +26,17 @@ Piggieback provides an alternative ClojureScript REPL entry point
 (`cider.piggieback/cljs-repl`) that changes an nREPL session into a
 ClojureScript REPL for `eval` and `load-file` operations, while accepting all
 the same options as `cljs.repl/repl`. When the ClojureScript REPL is terminated
-(by sending `:cljs/quit` for evaluation), the nREPL session is restored to it
+(by sending `:cljs/quit` for evaluation), the nREPL session is restored to its
 original state.
 
 ## Installation
 
 Piggieback is compatible with Clojure 1.10.0+, and _requires_ ClojureScript
 `1.10` or later and nREPL `1.0.0` or later.
+
+Note that recent ClojureScript releases bundle a Closure Compiler that needs a
+recent JDK: ClojureScript `1.12` requires JDK 21 or later. Stick to an older
+ClojureScript if you're on an older JDK.
 
 To use the default Node.js REPL (`cljs.repl.node`) you'll also need to install a recent version of Node.js.
 
@@ -71,15 +75,16 @@ Add this alias to `~/.clojure/deps.edn`:
 ;; ...
 :aliases {:nrepl
           {:extra-deps
-            {nrepl/nrepl {:mvn/version "1.3.0"}
-             cider/piggieback {:mvn/version "0.6.1"}}}}
+            {nrepl/nrepl {:mvn/version "1.7.0"}
+             cider/piggieback {:mvn/version "0.6.1"}
+             org.clojure/clojurescript {:mvn/version "1.12.145"}}}}
 }
 ```
 
 Then you can simply run a ClojureScript-capable nREPL server like this:
 
 ``` shell
-clj -R:nrepl -m nrepl.cmdline --middleware "[cider.piggieback/wrap-cljs-repl]"
+clj -M:nrepl -m nrepl.cmdline --middleware "[cider.piggieback/wrap-cljs-repl]"
 ```
 
 When you connect to the running server with your favourite nREPL client
@@ -155,24 +160,15 @@ REPL are evaluated within the ClojureScript environment.
 2. The `load-file` nREPL operation will only load the state of files from disk.
    This is in contrast to "regular" Clojure nREPL operation, where the current
    state of a file's buffer is loaded without regard to its saved state on disk.
+3. `cider.piggieback/cljs-repl` has to be invoked from within an nREPL session
+   (e.g. evaluated at a connected REPL). It can't be started from Leiningen's
+   `:repl-options :init`, which runs at startup before any session exists;
+   attempting to do so fails with an error explaining as much.
 
 Of course, you can concurrently take advantage of all of nREPL's other
 facilities, including connecting to the same nREPL server with other clients (so
 as to easily modify Clojure and ClojureScript code via the same JVM), and
-interrupting hung ClojureScript invocations:
-
-```clojure
-cljs.user=> (iterate inc 0)
-^C
-cljs.user=> "Error evaluating:" (iterate inc 0) :as "cljs.core.iterate.call(null,cljs.core.inc,0);\n"
-java.lang.ThreadDeath
-        java.lang.Thread.stop(Thread.java:776)
-		....
-cljs.user=> (<3 "nREPL still" "ClojureScript")
-"nREPL still <3 ClojureScript!"
-```
-
-(The ugly `ThreadDeath` exception will be eliminated eventually.)
+interrupting hung ClojureScript invocations.
 
 Piggieback works well with all known ClojureScript REPL environments, including
 Node and browser REPLs.
@@ -386,7 +382,7 @@ development of piggieback.
 
 ## License
 
-Copyright © 2012-2023 Chas Emerick, Bruce Hauman, Bozhidar Batsov and other contributors.
+Copyright © 2012-2026 Chas Emerick, Bruce Hauman, Bozhidar Batsov and other contributors.
 
 Distributed under the Eclipse Public License, the same as Clojure.
 
@@ -395,4 +391,3 @@ Distributed under the Eclipse Public License, the same as Clojure.
 [CIDER]: https://github.com/clojure-emacs/CIDER
 [cider-nrepl]: https://github.com/clojure-emacs/cider-nrepl
 [refactor-nrepl]: https://github.com/clojure-emacs/refactor-nrepl
-[CCW]: https://github.com/ccw-ide/ccw
