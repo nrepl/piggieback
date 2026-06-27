@@ -30,6 +30,45 @@
 (def ^:private ^:dynamic *cljs-warning-handlers* nil)
 (def ^:private ^:dynamic *original-clj-ns* nil)
 
+;; Atoms holding the Writer that the ClojureScript repl env's output should be
+;; forwarded to. They are repointed at the current message's output on every
+;; evaluation, see `forwarding-writer` and issue #111 for the details.
+(def ^:private ^:dynamic *cljs-out-target* nil)
+(def ^:private ^:dynamic *cljs-err-target* nil)
+
+(defn- forwarding-writer
+  "Return a `java.io.Writer` that always delegates to the Writer currently held
+  in `target` (an atom).
+
+  ClojureScript repl envs (e.g. the Node env) capture `*out*` once, at setup
+  time, on the thread that pumps the JS runtime's output back to the user. Bound
+  via `bound-fn`, that thread keeps writing to the output of the message that
+  *started* the REPL, so every later evaluation's output ends up with the wrong
+  message id and vanishes entirely once that connection is closed (issue #111).
+  Handing the env a forwarding writer lets us repoint it at the current
+  message's output on each evaluation."
+  ^java.io.Writer [target]
+  (proxy [java.io.Writer] []
+    ;; The proxy routes every `write` overload (and, via the superclass'
+    ;; `append`, those too) through this fn, so we have to cover both the
+    ;; single-argument and the (data, off, len) arities and dispatch on type.
+    (write
+      ([x]
+       (let [^java.io.Writer w @target]
+         (cond
+           (integer? x) (.write w (int x))
+           (string? x) (.write w ^String x)
+           :else (.write w ^chars x))))
+      ([data off len]
+       (let [^java.io.Writer w @target]
+         (if (string? data)
+           (.write w ^String data (int off) (int len))
+           (.write w ^chars data (int off) (int len))))))
+    (flush [] (.flush ^java.io.Writer @target))
+    ;; Deliberately a flush, not a close: the underlying per-message writers are
+    ;; owned and closed by nREPL, we must not close them here.
+    (close [] (.flush ^java.io.Writer @target))))
+
 ;; ---------------------------------------------------------------------------
 ;; Delegating Repl Env
 ;; ---------------------------------------------------------------------------
@@ -161,19 +200,28 @@
                  (merge-with (fn [a b] (if (nil? b) a b))
                              repl-opts options)))]
       (set! ana/*cljs-ns* 'cljs.user)
-      ;; this will implicitly set! *cljs-compiler-env*
-      (run-cljs-repl ieval/*msg*
-                     ;; this is needed to respect :repl-requires
-                     (if-let [requires (not-empty (:repl-requires opts))]
-                       (pr-str (cons 'ns `(cljs.user (:require ~@requires
-                                                               [~'cljs.repl :refer-macros [~'source ~'doc ~'find-doc
-                                                                                           ~'apropos ~'dir ~'pst]]
-                                                               [~'cljs.pprint]))))
-                       (nrepl/code (ns cljs.user
-                                     (:require [cljs.repl :refer-macros [source doc find-doc
-                                                                         apropos dir pst]]
-                                               [cljs.pprint]))))
-                     repl-env nil options)
+      (let [out-target (atom *out*)
+            err-target (atom *err*)]
+        ;; Set up the repl env with forwarding writers in place so its
+        ;; output-pump thread forwards to the current message's output rather
+        ;; than to the one that started the REPL (issue #111).
+        (binding [*out* (forwarding-writer out-target)
+                  *err* (forwarding-writer err-target)]
+          ;; this will implicitly set! *cljs-compiler-env*
+          (run-cljs-repl ieval/*msg*
+                         ;; this is needed to respect :repl-requires
+                         (if-let [requires (not-empty (:repl-requires opts))]
+                           (pr-str (cons 'ns `(cljs.user (:require ~@requires
+                                                                   [~'cljs.repl :refer-macros [~'source ~'doc ~'find-doc
+                                                                                               ~'apropos ~'dir ~'pst]]
+                                                                   [~'cljs.pprint]))))
+                           (nrepl/code (ns cljs.user
+                                         (:require [cljs.repl :refer-macros [source doc find-doc
+                                                                             apropos dir pst]]
+                                                   [cljs.pprint]))))
+                         repl-env nil options))
+        (set! *cljs-out-target* out-target)
+        (set! *cljs-err-target* err-target))
       ;; (clojure.pprint/pprint (:options @*cljs-compiler-env*))
       (set! *cljs-repl-env* repl-env)
       (set! *cljs-repl-options* opts)
@@ -276,6 +324,9 @@
                         (when ns
                           {#'ana/*cljs-ns* (symbol ns)})
                         (output-bindings msg))
+    ;; Repoint the repl env's output-pump thread at this message's output (#111).
+    (when *cljs-out-target* (reset! *cljs-out-target* *out*))
+    (when *cljs-err-target* (reset! *cljs-err-target* *err*))
     (let [repl-env *cljs-repl-env*
           repl-options *cljs-repl-options*
           init-ns ana/*cljs-ns*
@@ -365,6 +416,8 @@
                                        #'*cljs-repl-options* *cljs-repl-options*
                                        #'*cljs-warnings* *cljs-warnings*
                                        #'*cljs-warning-handlers* *cljs-warning-handlers*
+                                       #'*cljs-out-target* *cljs-out-target*
+                                       #'*cljs-err-target* *cljs-err-target*
                                        #'*original-clj-ns* *ns*
                                        #'ana/*cljs-ns* ana/*cljs-ns*})))
       (handler msg))))
