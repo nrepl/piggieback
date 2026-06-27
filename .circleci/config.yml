@@ -10,44 +10,39 @@ version: 2.1
 
 defaults: &defaults
   working_directory: ~/repo
+  environment:
+    # - limit the maximum heap size to prevent out of memory errors
+    # - print stacktraces to console
+    JVM_OPTS: >
+      -Xmx3200m
+      -Dclojure.main.report=stderr
 
-env_defaults: &env_defaults
-  LEIN_ROOT: "true"   # we intended to run lein as root
-
-jdk_env_defaults: &jdk_env_defaults
-  JVM_OPTS: -Xmx3200m
-
-# Sets a flag that didn't exist in prior JDKs and that is deprecated in later JDKs.
-jdk11_env_defaults: &jdk11_env_defaults
-  JVM_OPTS: -Xmx3200m --illegal-access=deny
+# Runners for the various supported OpenJDK versions.
 
 executors:
-  openjdk8:
+  jdk8:
     docker:
-      - image: circleci/clojure:openjdk-8-lein-2.9.1-node
-    environment:
-      <<: *env_defaults
-      <<: *jdk_env_defaults
+      - image: clojure:temurin-8-lein-2.12.0-noble
     <<: *defaults
-  openjdk11:
+  jdk11:
     docker:
-        - image: circleci/clojure:openjdk-11-lein-2.9.1-node
-    environment:
-      <<: *env_defaults
-      <<: *jdk11_env_defaults
+      - image: clojure:temurin-11-lein-2.12.0-noble
     <<: *defaults
-  openjdk17:
+  jdk17:
     docker:
-      - image: circleci/clojure:openjdk-17-lein-2.9.5-buster-node
-    environment:
-      <<: *env_defaults
-      <<: *jdk_env_defaults
+      - image: clojure:temurin-17-lein-2.12.0-noble
+    <<: *defaults
+  jdk21:
+    docker:
+      - image: clojure:temurin-21-lein-2.12.0-noble
+    <<: *defaults
+  jdk25:
+    docker:
+      - image: clojure:temurin-25-lein-2.12.0-noble
     <<: *defaults
 
 # Runs a given set of steps, with some standard pre- and post-
 # steps, including restoring of cache, saving of cache.
-#
-# we also install `make` here.
 #
 # Adapted from https://github.com/lambdaisland/meta/blob/master/circleci/clojure_orb.yml
 
@@ -66,23 +61,25 @@ commands:
       files:
         description: Files to consider when creating the cache key
         type: string
-        default: "deps.edn project.clj build.boot"
+        default: "deps.edn project.clj"
       cache_version:
         type: string
         description: "Change this value to force a cache update"
         default: "1"
     steps:
+      # The official Clojure images are minimal, so install make (for the
+      # Makefile targets) and Node.js (required by the cljs.repl.node tests).
       - run:
-          name: Install make
+          name: Install packages
           command: |
-            sudo apt-get install make
+            apt-get update && apt-get install -y make nodejs
       - run:
           name: Generate Cache Checksum
           command: |
             for file in << parameters.files >>
             do
               find . -name $file -exec cat {} +
-            done | shasum | awk '{print $1}' > /tmp/clojure_cache_seed
+            done | sha256sum | awk '{print $1}' > /tmp/clojure_cache_seed
       - restore_cache:
           key: clojure-<< parameters.cache_version >>-{{ checksum "/tmp/clojure_cache_seed" }}
       - steps: << parameters.steps >>
@@ -92,30 +89,33 @@ commands:
             - .cpcache
           key: clojure-<< parameters.cache_version >>-{{ checksum "/tmp/clojure_cache_seed" }}
 
-# The jobs are relatively simple. One runs utility commands against
-# latest stable JDK + Clojure, the other against specified versions
+# The jobs are relatively simple. One runs the linters against the latest
+# JDK + Clojure, the other runs the tests against a given version matrix.
 
 jobs:
 
-  util_job:
+  lint:
     description: |
-      Running utility commands/checks (linter etc.)
-      Always uses the latest JDK and Clojure versions
-    parameters:
-      steps:
-        type: steps
-    executor: openjdk17
+      Running linters (cljfmt and Eastwood).
+      Always uses the latest JDK and Clojure versions.
+    executor: jdk25
     environment:
-      VERSION: "1.10"
+      VERSION: "1.12"
     steps:
       - checkout
       - with_cache:
-          cache_version: "1.10"
-          steps: << parameters.steps >>
+          cache_version: "lint_v1"
+          steps:
+            - run:
+                name: Running cljfmt
+                command: make cljfmt
+            - run:
+                name: Running Eastwood
+                command: make eastwood
 
-  test_code:
+  test:
     description: |
-      Run tests against given version of JDK and Clojure
+      Run tests against given versions of JDK, Clojure and nREPL.
     parameters:
       jdk_version:
         description: Version of JDK to test against
@@ -124,8 +124,9 @@ jobs:
         description: Version of Clojure to test against
         type: string
       nrepl_version:
-        description: Version of nrepl to test against
+        description: nREPL profile to test against
         type: string
+        default: "nrepl-1.0"
     executor: << parameters.jdk_version >>
     environment:
       VERSION: << parameters.clojure_version >>
@@ -133,7 +134,7 @@ jobs:
     steps:
       - checkout
       - with_cache:
-          cache_version: << parameters.clojure_version >>|<< parameters.jdk_version >>
+          cache_version: "test_v1_<< parameters.clojure_version >>_<< parameters.jdk_version >>_<< parameters.nrepl_version >>"
           steps:
             - run:
                 name: Running tests
@@ -148,29 +149,36 @@ jobs:
 
 # The ci-test-matrix does the following:
 #
-# - run tests against the target matrix
-#   - Java 8, 11 and 17
-#   - Clojure 1.8, 1.9, 1.10, master
-# - linters: eastwood and cljfmt
+# - run tests against the target matrix:
+#   - JDK 8, 11, 17, 21, 25
+#   - Clojure 1.10, 1.11, 1.12
+#   - nREPL 1.0, 1.2, 1.3, 1.4, 1.7
+# - linters: cljfmt and Eastwood
 
 workflows:
   version: 2.1
   ci-test-matrix:
     jobs:
-      - test_code:
+      - test:
+          # Older Clojure versions against the fringe JDKs.
           matrix:
+            alias: "test-older-clojure"
             parameters:
-              jdk_version: [openjdk8, openjdk11, openjdk17]
-              clojure_version: ["1.10", "1.11", "1.12"]
-              nrepl_version: ["nrepl-1.0", "nrepl-1.1", "nrepl-1.2", "nrepl-1.3"]
-      - util_job:
-          name: Code Linting
-          steps:
-            - run:
-                name: Running cljfmt
-                command: |
-                  make cljfmt
-            - run:
-                name: Running Eastwood
-                command: |
-                  make eastwood
+              clojure_version: ["1.10", "1.11"]
+              jdk_version: [jdk8, jdk25]
+      - test:
+          # Latest Clojure across all supported JDKs.
+          matrix:
+            alias: "test-latest-clojure"
+            parameters:
+              clojure_version: ["1.12"]
+              jdk_version: [jdk8, jdk11, jdk17, jdk21, jdk25]
+      - test:
+          # Latest Clojure against the supported nREPL versions.
+          matrix:
+            alias: "nrepl-test"
+            parameters:
+              clojure_version: ["1.12"]
+              jdk_version: [jdk25]
+              nrepl_version: ["nrepl-1.0", "nrepl-1.2", "nrepl-1.3", "nrepl-1.4", "nrepl-1.7"]
+      - lint
