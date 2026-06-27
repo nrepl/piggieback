@@ -1,7 +1,7 @@
 .PHONY: test eastwood cljfmt release deploy clean
 
-VERSION ?= 1.10
-NREPL_VERSION ?= nrepl-0.6
+VERSION ?= 1.12
+NREPL_VERSION ?= nrepl-1.0
 
 test:
 	lein with-profile -user,+$(VERSION),+$(NREPL_VERSION) test;

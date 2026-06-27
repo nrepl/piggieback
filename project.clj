@@ -14,7 +14,7 @@
                                     :sign-releases false}]]
 
   :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.0"]
-                                       [org.clojure/clojurescript "1.11.132"]
+                                       [org.clojure/clojurescript "1.12.145"]
                                        [nrepl/nrepl "1.0.0"]]}
 
              :test {:source-paths ["env/test"]}
@@ -26,12 +26,14 @@
                                    [org.clojure/clojurescript "1.11.132"]]}
 
              :1.12 {:dependencies [[org.clojure/clojure "1.12.0"]
-                                   [org.clojure/clojurescript "1.11.132"]]}
+                                   [org.clojure/clojurescript "1.12.145"]]}
 
              :nrepl-1.0 {:dependencies [[nrepl/nrepl "1.0.0"]]}
              :nrepl-1.1 {:dependencies [[nrepl/nrepl "1.1.1"]]}
              :nrepl-1.2 {:dependencies [[nrepl/nrepl "1.2.0"]]}
              :nrepl-1.3 {:dependencies [[nrepl/nrepl "1.3.0"]]}
+             :nrepl-1.4 {:dependencies [[nrepl/nrepl "1.4.0"]]}
+             :nrepl-1.7 {:dependencies [[nrepl/nrepl "1.7.0"]]}
 
              ;; Need ^:repl because of: https://github.com/technomancy/leiningen/issues/2132
              :repl ^:repl [:test
