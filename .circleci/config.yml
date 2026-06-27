@@ -154,25 +154,28 @@ jobs:
 #   - Clojure 1.10, 1.11, 1.12
 #   - nREPL 1.0, 1.2, 1.3, 1.4, 1.7
 # - linters: cljfmt and Eastwood
+#
+# Note: ClojureScript 1.12+ bundles a Closure Compiler that requires JDK 21+,
+# so coverage of the older JDKs is provided by the older Clojure/CLJS profiles.
 
 workflows:
   version: 2.1
   ci-test-matrix:
     jobs:
       - test:
-          # Older Clojure versions against the fringe JDKs.
+          # Older Clojure/CLJS versions cover the older JDKs (8 through 17).
           matrix:
             alias: "test-older-clojure"
             parameters:
               clojure_version: ["1.10", "1.11"]
-              jdk_version: [jdk8, jdk25]
+              jdk_version: [jdk8, jdk11, jdk17]
       - test:
-          # Latest Clojure across all supported JDKs.
+          # Latest Clojure/CLJS on the JDKs it supports (21+).
           matrix:
             alias: "test-latest-clojure"
             parameters:
               clojure_version: ["1.12"]
-              jdk_version: [jdk8, jdk11, jdk17, jdk21, jdk25]
+              jdk_version: [jdk21, jdk25]
       - test:
           # Latest Clojure against the supported nREPL versions.
           matrix:
