@@ -99,7 +99,13 @@
 
 (defmethod print-method UnknownTaggedLiteral
   [^UnknownTaggedLiteral this ^java.io.Writer w]
-  (.write w (str "#" (.tag this) (.data this))))
+  ;; Recurse through print-method (rather than str) so the data round-trips
+  ;; correctly: strings keep their quotes, nested values are printed readably,
+  ;; and the tag and data are separated by a space (issue #120).
+  (.write w "#")
+  (print-method (.tag this) w)
+  (.write w " ")
+  (print-method (.data this) w))
 
 (defn- generate-delegating-repl-env [repl-env]
   (let [repl-env-class (class repl-env)

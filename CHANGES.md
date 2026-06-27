@@ -2,6 +2,7 @@
 
 ## unreleased
 
+* [#120](https://github.com/nrepl/piggieback/issues/120): Fix printing of unknown tagged literals (a space was missing after the tag and string data lost its quotes).
 * [#62](https://github.com/nrepl/piggieback/issues/62): Keep evaluation working after a REPL setup error by always recording the compiler env.
 * [#111](https://github.com/nrepl/piggieback/issues/111): Fix ClojureScript output being tagged with the REPL-starting message's id and vanishing after reconnecting to a session.
 
