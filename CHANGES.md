@@ -190,3 +190,28 @@ Fixes gh-10.
   ~`0.2.0`; it now simply calls through
   to `cljs.repl.rhino/repl-env`.  Any usage of the former should be replaced
   with the latter.  Fixes gh-9.
+
+## `0.0.5` (2013-06-26)
+
+* Restore the original Clojure namespace when exiting the ClojureScript REPL.
+* Track ClojureScript analyzer API changes on ClojureScript master.
+
+## `0.0.4` (2013-02-27)
+
+* Properly propagate `*cljs-ns*` as `*ns*` (gh-4).
+
+## `0.0.3` (2013-02-26)
+
+* Respect `:ns` sent from the client when evaluating (gh-4).
+* Bind `*cljs-ns*` for the scope of a file load so namespace changes don't percolate up into responses (gh-5).
+* Fix the Leiningen setup instructions; `:injections` are no longer needed (gh-6).
+
+## `0.0.2` (2012-08-22)
+
+* nREPL middleware-based configuration.
+* Add `load-file` op support.
+* Fix the Rhino REPL environment to write to `*out*` instead of `System/out`.
+
+## `0.0.1` (2012-08-10)
+
+* Initial release.
