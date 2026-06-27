@@ -18,4 +18,6 @@ pom.xml.asc
 .cljs_*
 nashorn*
 .nrepl-port
+.cpcache
+.eastwood
 \.\#*
