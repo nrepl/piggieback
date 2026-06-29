@@ -26,7 +26,7 @@
         orig-closed? (atom false)
         session (atom {#'cider.piggieback/*cljs-repl-env* (->RecordingEnv torn?)}
                       :meta {:id "s" :close #(reset! orig-closed? true)})
-        ensure-close-teardown! @#'cider.piggieback/ensure-close-teardown!]
+        ensure-close-teardown! @#'cider.piggieback.cljs/ensure-close-teardown!]
     (ensure-close-teardown! session)
     ;; simulate nREPL's close-session, which invokes the session's :close meta
     ((:close (meta session)))
@@ -37,7 +37,7 @@
   (let [orig-closed? (atom false)
         ;; no active cljs repl-env in the session
         session (atom {} :meta {:id "s" :close #(reset! orig-closed? true)})
-        ensure-close-teardown! @#'cider.piggieback/ensure-close-teardown!]
+        ensure-close-teardown! @#'cider.piggieback.cljs/ensure-close-teardown!]
     (ensure-close-teardown! session)
     ;; hooking twice must not stack wrappers
     (ensure-close-teardown! session)

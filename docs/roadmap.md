@@ -49,6 +49,10 @@ it has the longest lead time.
   via the session's `:close` metadata hook.
 - Done: **C2** - `load-file` evaluates the source sent in the message (unsaved
   buffers included) instead of re-reading from disk.
+- Done: **S1** - the three-file `load`/`in-ns` structure is gone; Piggieback is
+  now a public `cider.piggieback` namespace that lazily loads the
+  `cider.piggieback.cljs` implementation, and the clj-kondo workarounds it
+  forced are removed.
 
 ## Phase 1 - Seams and small modernizations
 
@@ -133,7 +137,7 @@ Clojure nREPL semantics ("load buffer" should load what is in the buffer).
 
 ## Phase 3 - Structural simplification
 
-### S1 - Single namespace via `requiring-resolve`
+### S1 - Single namespace via `requiring-resolve` (done)
 
 Collapse the three-file `if-ns` + `(load ...)` + `(in-ns)` structure into one
 namespace that resolves the ClojureScript machinery lazily at first use and

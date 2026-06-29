@@ -97,8 +97,9 @@ which repl-env) to the `describe` response's `:aux` map via a `:describe-fn`.
 
 ### Dynamic vars as session state
 
-ClojureScript REPL state lives in a handful of dynamic vars, all private to the
-`cider.piggieback` namespace:
+ClojureScript REPL state lives in a handful of dynamic vars interned in the
+`cider.piggieback` namespace (they are public, since other middleware read them
+out of the session by name):
 
 | Var | Holds |
 | --- | --- |
@@ -120,14 +121,23 @@ throw a cryptic root-binding error (issue #124).
 
 ### Optional ClojureScript
 
-Piggieback has no hard dependency on ClojureScript. The main namespace
-(`cider.piggieback`) uses a small `if-ns` macro to conditionally `(load ...)`
-one of two files at compile time: the real implementation
-(`piggieback_impl.clj`) when `cljs.repl` is on the classpath, or a no-op shim
-(`piggieback_shim.clj`) when it is not. Both files `(in-ns 'cider.piggieback)`
-and define the same vars, so consumers can load Piggieback unconditionally. This
-predates `requiring-resolve` and is a candidate for simplification (roadmap item
-S1).
+Piggieback has no hard dependency on ClojureScript, so tools can load it
+unconditionally. There are two namespaces:
+
+- `cider.piggieback` - the always-loadable public face. It requires only nREPL,
+  holds the session-state dynamic vars (the part other middleware read by name),
+  and exposes the public API as thin delegators.
+- `cider.piggieback.cljs` - the implementation, which requires the ClojureScript
+  compiler and holds the handlers. It is loaded lazily, on first use, and only
+  when ClojureScript is on the classpath.
+
+`cider.piggieback` checks for ClojureScript by trying to `require` `cljs.repl`
+directly (not the implementation namespace, which would trigger a load cycle
+since the implementation requires `cider.piggieback` back). When ClojureScript is
+present, the public functions resolve their counterparts in
+`cider.piggieback.cljs` via `requiring-resolve` on first call; when it is absent,
+`wrap-cljs-repl` is a no-op and `cljs-repl` throws a clear "did you forget a
+dependency?" error (roadmap item S1).
 
 ## Lifecycle walkthroughs
 
