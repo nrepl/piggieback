@@ -42,6 +42,7 @@ it has the longest lead time.
 - Done: **M2** - ClojureScript-internals coupling isolated into the
   `cider.piggieback.cljs` core namespace; the middleware no longer requires any
   `cljs.*` namespace directly.
+- Done: **M5** - the interrupt limitation is documented in the README.
 
 ## Phase 1 - Seams and small modernizations
 
@@ -90,7 +91,7 @@ more robust signal for choosing plain vs pretty printing.
 - Why: the present check breaks the moment a different pretty-printer is used.
 - Risk: low.
 
-### M5 - Document the interrupt limitation
+### M5 - Document the interrupt limitation (done)
 
 A long-running JS eval cannot be cancelled cleanly. Document this clearly rather
 than leaving it implicit, and decide whether any best-effort behaviour is worth

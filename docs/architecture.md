@@ -297,7 +297,8 @@ roadmap item.
   evaluated, because steady-state eval does not spin a fresh `cljs.repl` per
   message (see the README Design section).
 - **Interrupt.** A long-running JS eval cannot be cancelled cleanly. This is
-  largely inherent to single-threaded JS runtimes but is currently undocumented.
+  largely inherent to single-threaded JS runtimes; it is documented in the
+  README ("Interrupting evaluation").
 
 ## Compatibility surface
 
