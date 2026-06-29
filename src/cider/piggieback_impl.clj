@@ -84,6 +84,33 @@
                                                          :root-ex (-> root-ex class str)}))
       ((:caught repl-options core/default-caught) err repl-env repl-options))))
 
+(defn- ensure-close-teardown!
+  "Augment the session's `:close` metadata (once) so that closing the session
+  also tears down any active ClojureScript repl-env.
+
+  nREPL's session middleware handles the `close` op itself and never delegates
+  it to Piggieback, so we can't intercept it as an op. Instead we compose our
+  teardown into the `:close` fn that `nrepl.middleware.session/close-session`
+  invokes. Without this, closing a session (or a client exiting) without first
+  sending `:cljs/quit` leaks the JavaScript runtime, e.g. a Node subprocess."
+  [session]
+  (when-not (::close-hooked (meta session))
+    (alter-meta!
+     session
+     (fn [m]
+       (let [orig-close (:close m)]
+         (assoc m
+                ::close-hooked true
+                :close (fn []
+                         ;; Read the repl-env at close time so that a prior
+                         ;; :cljs/quit (which nils it out) means we don't try to
+                         ;; tear an already-torn-down runtime down again.
+                         (try
+                           (when-let [repl-env (@session #'*cljs-repl-env*)]
+                             (core/tear-down! (core/get-repl-env repl-env)))
+                           (catch Throwable _))
+                         (when orig-close (orig-close)))))))))
+
 ;; This function always executes when the nREPL session is evaluating Clojure,
 ;; via interruptible-eval, etc. This means our dynamic environment is in place,
 ;; so set! and simple dereferencing is available. Contrast w/ evaluate and
@@ -158,6 +185,9 @@
       (set! *cljs-warnings* (core/warnings))
       (set! *cljs-warning-handlers* (core/warning-handlers))
       (set! *ns* (find-ns (core/current-ns)))
+      ;; make sure a leaked JS runtime is torn down if the session is closed
+      ;; without a :cljs/quit first
+      (ensure-close-teardown! session)
       (println "To quit, type:" :cljs/quit))
     (catch Exception e
       (set! *cljs-repl-env* nil)

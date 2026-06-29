@@ -205,7 +205,7 @@ Note the two distinct evaluation paths (setup via `repl*`, steady-state via
 `evaluate-form`). That split is the source of much of Piggieback's incidental
 complexity and is the target of the largest planned refactor (roadmap item B1).
 
-### Session REPL state and the teardown gap
+### Session REPL state and teardown
 
 ```mermaid
 stateDiagram-v2
@@ -213,21 +213,30 @@ stateDiagram-v2
     Clojure --> ClojureScript: cljs-repl invoked (sets *cljs-repl-env*)
     ClojureScript --> ClojureScript: eval / load-file routed to Piggieback
     ClojureScript --> Clojure: ":cljs/quit" (-tear-down, vars reset)
+    ClojureScript --> [*]: session closed (-tear-down via :close hook)
     Clojure --> [*]: session closed
 
     note right of ClojureScript
-      Gap: if a session is closed
-      (or the client disconnects)
-      while here, -tear-down is
-      never called and the JS
-      runtime leaks. Roadmap C1.
+      Closing the session while a
+      cljs REPL is active also tears
+      the runtime down, via the
+      session's :close meta hook
+      (roadmap C1).
     end note
 ```
 
-Teardown currently happens only on an explicit `:cljs/quit`. There is no hook on
-session close or expiry, so a dropped connection leaves the node subprocess or
-browser connection running. This is a real correctness gap, tracked as roadmap
-item C1.
+Teardown happens on an explicit `:cljs/quit` and also when the session is closed
+while a cljs REPL is active. Since nREPL's session middleware handles the `close`
+op itself and never delegates it to Piggieback, the latter is wired by composing
+a teardown into the session's `:close` metadata fn (the one
+`nrepl.middleware.session/close-session` invokes) when the REPL starts. This
+keeps a client that closes its session (or exits) without `:cljs/quit` from
+leaking the JavaScript runtime (roadmap item C1).
+
+Note this covers session *close*, not a silently dropped TCP connection: nREPL
+sessions deliberately outlive their connection (so you can reconnect, as the
+output-routing test exercises), so a dropped connection alone does not close the
+session or trigger teardown.
 
 ## Implementation mechanisms
 
@@ -294,7 +303,10 @@ roadmap item.
   from `file-path` on disk rather than evaluating the source sent in the message,
   which diverges from Clojure nREPL semantics (loading an unsaved buffer loads the
   saved version). Roadmap C2.
-- **No session-close teardown.** See the state diagram above; roadmap C1.
+- **Dropped connections.** Session close now tears the runtime down (roadmap
+  C1), but a silently dropped TCP connection does not close the session, so it
+  cannot trigger teardown; such a session lingers until an explicit close or
+  server shutdown.
 - **Multi-form evaluation.** Only the first form of a multi-form string is
   evaluated, because steady-state eval does not spin a fresh `cljs.repl` per
   message (see the README Design section).
