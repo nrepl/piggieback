@@ -40,8 +40,8 @@
                            {:source-paths ["env/repl"]
                             :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}]
 
-             :cljfmt {:plugins [[lein-cljfmt "0.6.1"]]}
+             :cljfmt {:plugins [[lein-cljfmt "0.9.2"]]}
 
-             :eastwood {:plugins  [[jonase/eastwood "0.9.9"]]
+             :eastwood {:plugins  [[jonase/eastwood "1.4.3"]]
                         :eastwood {:config-files ["eastwood.clj"]
                                    :exclude-linters [:no-ns-form-found]}}})
