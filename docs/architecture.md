@@ -89,9 +89,11 @@ Piggieback operates at the nREPL *session* level. Clients do not pass an
 `:env :cljs` parameter or call a dedicated op; they just keep using `eval` with a
 session that has a ClojureScript REPL active. This is what makes a mixed
 Clojure/ClojureScript server transparent to tooling. The price is that
-ClojureScript-ness is implicit: nothing in the protocol (for example the
-`describe` response) currently advertises that a session is in ClojureScript
-mode, so tools infer it out of band. (See roadmap item M3.)
+ClojureScript-ness is implicit in the eval flow: clients don't flag a message as
+cljs. To let tooling detect it from the protocol rather than out of band,
+Piggieback contributes its per-session status (whether a cljs REPL is active, and
+which repl-env) to the `describe` response's `:aux` map via a `:describe-fn`.
+(See roadmap item M3.)
 
 ### Dynamic vars as session state
 

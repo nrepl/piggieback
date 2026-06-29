@@ -269,6 +269,19 @@
 (defn- load-file [{:keys [session transport file-path] :as msg}]
   (evaluate (assoc msg :code (format "(load-file %s)" (pr-str file-path)))))
 
+(defn describe-cljs
+  "A describe-fn (see nREPL's `wrap-describe`) that contributes Piggieback's
+  per-session ClojureScript status to the `describe` response's `:aux` map.
+
+  Lets tooling detect that Piggieback is present and whether the session is
+  currently evaluating ClojureScript (and against which repl-env), instead of
+  having to infer it out of band."
+  [{:keys [session]}]
+  (let [repl-env (when session (get @session #'*cljs-repl-env*))]
+    {:piggieback (cond-> {:cljs-repl (if repl-env "active" "inactive")}
+                   repl-env (assoc :repl-env-type
+                                   (.getName (class (core/get-repl-env repl-env)))))}))
+
 (defn wrap-cljs-repl [handler]
   (fn [{:keys [session op] :as msg}]
     (let [handler (or (when-let [f (and (@session #'*cljs-repl-env*)

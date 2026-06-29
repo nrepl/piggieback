@@ -43,6 +43,8 @@ it has the longest lead time.
   `cider.piggieback.cljs` core namespace; the middleware no longer requires any
   `cljs.*` namespace directly.
 - Done: **M5** - the interrupt limitation is documented in the README.
+- Done: **M3** - the `describe` response surfaces per-session ClojureScript
+  status via a `:describe-fn`.
 
 ## Phase 1 - Seams and small modernizations
 
@@ -73,7 +75,7 @@ that core, not to compiler internals directly.
   lean on the existing tests and add characterization tests where thin.
 - Prerequisite for: B1.
 
-### M3 - Surface ClojureScript state in `describe`
+### M3 - Surface ClojureScript state in `describe` (done)
 
 Advertise Piggieback in the `describe` response and expose whether a session is
 currently in ClojureScript mode (and ideally which repl-env). Optionally echo

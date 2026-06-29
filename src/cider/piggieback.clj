@@ -27,4 +27,6 @@
                  {:requires #{"clone" #'print/wrap-print}
                   ;; piggieback unconditionally hijacks eval and load-file
                   :expects #{"eval" "load-file"}
-                  :handles {}})
+                  :handles {}
+                  ;; contributes the session's ClojureScript status to `describe`
+                  :describe-fn describe-cljs})
