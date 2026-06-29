@@ -13,7 +13,7 @@
                                     :password :env/clojars_password
                                     :sign-releases false}]]
 
-  :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.0"]
+  :profiles {:provided {:dependencies [[org.clojure/clojure "1.12.5"]
                                        [org.clojure/clojurescript "1.12.145"]
                                        [nrepl/nrepl "1.0.0"]]}
 
@@ -25,7 +25,7 @@
              :1.11 {:dependencies [[org.clojure/clojure "1.11.4"]
                                    [org.clojure/clojurescript "1.11.132"]]}
 
-             :1.12 {:dependencies [[org.clojure/clojure "1.12.0"]
+             :1.12 {:dependencies [[org.clojure/clojure "1.12.5"]
                                    [org.clojure/clojurescript "1.12.145"]]}
 
              :nrepl-1.0 {:dependencies [[nrepl/nrepl "1.0.0"]]}
@@ -40,7 +40,7 @@
                            {:source-paths ["env/repl"]
                             :repl-options {:nrepl-middleware [cider.piggieback/wrap-cljs-repl]}}]
 
-             :cljfmt {:plugins [[lein-cljfmt "0.9.2"]]}
+             :cljfmt {:plugins [[dev.weavejester/lein-cljfmt "0.16.4"]]}
 
              :eastwood {:plugins  [[jonase/eastwood "1.4.3"]]
                         :eastwood {:config-files ["eastwood.clj"]
