@@ -1,4 +1,8 @@
-{:linters
+{;; `nrepl.core/code` stringifies its body rather than evaluating it, so the
+ ;; symbols inside (a `cljs.user` ns form) must not be resolved as real code.
+ :lint-as {nrepl.core/code clojure.core/quote}
+
+ :linters
  {;; nREPL handlers destructure many message keys (`session`, `transport`,
   ;; `ns`, ...) and intentionally use only some of them; the rest document the
   ;; message shape.

@@ -39,6 +39,9 @@ it has the longest lead time.
   #124).
 - Done: **M1** - cross-nREPL-version compatibility centralized into the
   `cider.piggieback.compat` namespace.
+- Done: **M2** - ClojureScript-internals coupling isolated into the
+  `cider.piggieback.cljs` core namespace; the middleware no longer requires any
+  `cljs.*` namespace directly.
 
 ## Phase 1 - Seams and small modernizations
 
@@ -56,7 +59,7 @@ shims.
 - Risk: low. Pure refactor, behaviour-preserving, fully covered by the nREPL
   matrix in CI.
 
-### M2 - Isolate the ClojureScript-internals coupling
+### M2 - Isolate the ClojureScript-internals coupling (done)
 
 Gather the direct reaches into `cljs.analyzer`, `cljs.env`, `cljs.closure`,
 `cljs.tagged-literals`, and the non-public parts of `cljs.repl` into a single,
