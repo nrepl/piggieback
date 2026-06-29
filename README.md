@@ -336,6 +336,17 @@ the above fallbacks are being used instead.
 **Note:** See [this pull request](https://github.com/nrepl/piggieback/pull/108)
 for more background and discussion on the current solution.
 
+### Interrupting evaluation
+
+nREPL's `interrupt` op does not meaningfully apply to ClojureScript
+evaluation. A ClojureScript form is compiled on the JVM and then handed off to
+the JavaScript runtime (Node, the browser, ...), which executes it in a single
+thread that Piggieback does not control. There is no portable way to interrupt
+code already running in that runtime, so a long-running or non-terminating
+ClojureScript expression cannot be cancelled from the editor the way a Clojure
+one can. If you evaluate something that hangs, you'll generally need to restart
+the JavaScript runtime (and the REPL on top of it).
+
 ## FAQ
 
 ### Why "piggieback" instead of "piggyback"?
