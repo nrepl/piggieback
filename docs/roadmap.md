@@ -37,12 +37,14 @@ it has the longest lead time.
   Eastwood on current versions, dependencies refreshed.
 - Done: the Phase 2 correctness bugs from the 0.6.2 release (#62, #111, #120,
   #124).
+- Done: **M1** - cross-nREPL-version compatibility centralized into the
+  `cider.piggieback.compat` namespace.
 
 ## Phase 1 - Seams and small modernizations
 
 Low risk, high clarity, and partly preparatory for Phase 4.
 
-### M1 - Centralize cross-nREPL-version compatibility
+### M1 - Centralize cross-nREPL-version compatibility (done)
 
 Today, support for the supported nREPL range is handled by `resolve`-based
 feature detection scattered through the implementation (`nrepl-1-3+?`,

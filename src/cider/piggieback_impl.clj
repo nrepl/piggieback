@@ -11,6 +11,7 @@
  '[cljs.env :as env]
  '[cljs.analyzer :as ana]
  '[cljs.tagged-literals :as tags]
+ '[cider.piggieback.compat :as compat]
  '[nrepl.core :as nrepl]
  '[nrepl.middleware.interruptible-eval :as ieval]
  '[nrepl.misc :as misc :refer [response-for]]
@@ -329,27 +330,19 @@
                                      #'pprint-repl-wrap-fn)) form)
                            opts))
 
-(defn- output-bindings [{:keys [session] :as msg}]
-  (when-let [replying-PrintWriter (resolve 'nrepl.middleware.print/replying-PrintWriter)]
-    {#'*out* (replying-PrintWriter :out msg {})
-     #'*err* (replying-PrintWriter :err msg {})}))
-
-(def nrepl-1-3+? (some? (resolve 'ieval/evaluator)))
-
 (defn do-eval [{:keys [session transport ^String code file ns] :as msg}]
   (with-bindings (merge {#'ana/*cljs-warnings* ana/*cljs-warnings*
                          #'ana/*cljs-warning-handlers* ana/*cljs-warning-handlers*
                          #'ana/*unchecked-if* ana/*unchecked-if*
                          #'env/*compiler* (get @session #'*cljs-compiler-env*)
                          #'cljs.repl/*repl-env* (get @session #'*cljs-repl-env*)}
-                        ;; ieval/evaluator appeared in nREPL 1.3 where session
-                        ;; contents are already bound by session middleware and
-                        ;; should NOT be rebound here.
-                        (when-not nrepl-1-3+?
+                        ;; On nREPL 1.3+ the session middleware already binds the
+                        ;; session contents, so we must not rebind them here.
+                        (when-not compat/nrepl-1-3+?
                           @session)
                         (when ns
                           {#'ana/*cljs-ns* (symbol ns)})
-                        (output-bindings msg))
+                        (compat/output-bindings msg))
     ;; Repoint the repl env's output-pump thread at this message's output (#111).
     (when *cljs-out-target* (reset! *cljs-out-target* *out*))
     (when *cljs-err-target* (reset! *cljs-err-target* *err*))
