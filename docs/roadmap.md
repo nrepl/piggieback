@@ -45,6 +45,8 @@ it has the longest lead time.
 - Done: **M5** - the interrupt limitation is documented in the README.
 - Done: **M3** - the `describe` response surfaces per-session ClojureScript
   status via a `:describe-fn`.
+- Done: **C1** - closing a session tears down an active ClojureScript repl-env,
+  via the session's `:close` metadata hook.
 
 ## Phase 1 - Seams and small modernizations
 
@@ -106,7 +108,7 @@ offering.
 
 Independent of everything else; ship as soon as ready.
 
-### C1 - Tear down on session close
+### C1 - Tear down on session close (done)
 
 Register cleanup on session close / expiry so the active repl-env's `-tear-down`
 runs even when the client never sends `:cljs/quit` (dropped connection, editor
