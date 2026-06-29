@@ -159,19 +159,21 @@ sequenceDiagram
     W->>IE: pass through
     IE->>PB: invoke cljs-repl
     PB->>PB: wrap repl-env in a delegating env,<br/>build default-compiler-env up front
-    PB->>R: run-cljs-repl (ns-require form + " :cljs/quit")
+    PB->>R: setup-repl (ns-require form + " :cljs/quit")
     R->>E: -setup
     E->>JS: launch runtime
-    R-->>PB: :print callback records compiler-env
-    PB->>PB: set! dynamic vars, switch *ns* to cljs.user
+    R-->>PB: repl* loop exits on :cljs/quit
+    PB->>PB: set! dynamic vars, swap session ns to cljs.user
     PB-->>C: "To quit, type: :cljs/quit"
 ```
 
 Setup is the one place Piggieback drives `cljs.repl/repl*` (the full REPL loop)
 rather than evaluating forms itself. It feeds the loop a single namespace-require
-form plus `:cljs/quit`, with no-op `:prompt` / `:need-prompt` / `:init`
-callbacks, and reaches the compiler env back out through the `:print` callback.
-The compiler env is also created up front and captured unconditionally, so that
+form plus `:cljs/quit`, with no-op `:prompt` / `:need-prompt` / `:init` / `:print`
+callbacks. Afterwards Piggieback reads the state it needs back directly: the
+compiler env is the one it created and handed in, and the namespace is always
+`cljs.user` (the setup form switches into it), so no `:print` side-channel is
+needed. The compiler env is created up front and captured unconditionally, so that
 evaluation still works even if the setup eval errors before `:print` runs (issue
 #62).
 
@@ -212,8 +214,11 @@ re-reads with an EDN reader (using `UnknownTaggedLiteral` as the default tag
 handler so unknown tagged literals round-trip) before sending it as `:value`.
 
 Note the two distinct evaluation paths (setup via `repl*`, steady-state via
-`evaluate-form`). That split is the source of much of Piggieback's incidental
-complexity and is the target of the largest planned refactor (roadmap item B1).
+`evaluate-form`). Fully unifying them onto one path was considered (roadmap item
+B1) but deferred: it would mean replicating `repl*`'s version-sensitive setup,
+trading one coupling for another. Instead the worst of the setup warts were
+removed (the `:print` side-channel, and the per-class codegen delegator described
+below), keeping `repl*` for the setup it does correctly.
 
 ### Session REPL state and teardown
 
@@ -256,11 +261,18 @@ These are the non-obvious pieces that make the bridge work.
 
 `cljs.repl/repl*` calls `-tear-down` on the repl-env when its loop exits, which
 (because setup appends `:cljs/quit`) would tear the env down immediately after
-setup. To prevent that, Piggieback wraps the real repl-env in a generated
-"delegating" type whose `-tear-down` is a no-op and which forwards every other
-`IJavaScriptEnv` method (and map-like access) to the wrapped env. The wrapper is
-currently generated per repl-env class at runtime via `eval`. Removing the
-`repl*` driving would remove the need for this wrapper entirely (roadmap B1).
+setup. To prevent that, Piggieback wraps the real repl-env in a single
+`DelegatingReplEnv` type whose `-tear-down` is a no-op and which forwards every
+other `IJavaScriptEnv` method (and map-like access) to the wrapped env.
+
+The `cljs.repl` error-formatting protocols (`IParseError`, `IGetError`,
+`IParseStacktrace`, `IPrintStacktrace`, `IReplEnvOptions`) are optional - a given
+env implements only some (node and the browser env implement different subsets) -
+and `cljs.repl` guards each call site with `satisfies?`. The delegator implements
+all of them, delegating to the wrapped env when it supports the protocol and
+otherwise falling back to the same default `cljs.repl` would use, so it mirrors
+each env's behaviour per instance. This replaced an earlier scheme that generated
+a delegating type per repl-env class at runtime via `eval` (roadmap item B1).
 
 ### Output forwarding (issue #111)
 
@@ -342,6 +354,5 @@ Piggieback also couples tightly to ClojureScript compiler internals
 non-public parts of `cljs.repl`). This is largely unavoidable given there is no
 public "evaluate a cljs form in this env and hand me the result" API, but it is
 fragile, so it is confined to a single namespace, `cider.piggieback.cljs`, which
-exposes a small Clojure-facing API the middleware talks to instead of reaching
-into the compiler directly (roadmap item M2). That boundary is also what makes
-the planned evaluation-ownership refactor (B1) tractable.
+holds all of it; the public `cider.piggieback` namespace reaches none of the
+compiler directly (roadmap item M2).

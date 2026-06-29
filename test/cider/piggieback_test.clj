@@ -112,6 +112,20 @@
     (testing (pr-str response)
       (is (= "cljs.user" (:ns response))))))
 
+;; A throwing evaluation must be reported as an eval error (this exercises the
+;; delegating repl-env's error-formatting protocols, since cljs.repl's
+;; display-error reaches for them), and the session must keep working afterwards.
+(deftest eval-error-is-reported-and-recoverable
+  (let [response (-> (nrepl/message *session* {:op "eval" :code "(throw (js/Error. \"boom\"))"})
+                     nrepl/combine-responses)]
+    (testing (pr-str response)
+      (is (contains? (:status response) "eval-error"))))
+  (let [response (-> (nrepl/message *session* {:op "eval" :code "(+ 1 1)"})
+                     nrepl/combine-responses)]
+    (testing (pr-str response)
+      (some-> response :err println)
+      (is (= ["2"] (:value response))))))
+
 ;; Piggieback contributes its per-session ClojureScript status to nREPL's
 ;; `describe` response, so tooling can detect cljs mode from the protocol rather
 ;; than inferring it. The fixture has an active node REPL, so describe should
