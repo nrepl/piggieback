@@ -1,4 +1,4 @@
-.PHONY: test eastwood cljfmt release deploy clean
+.PHONY: test eastwood cljfmt cljfmt-fix kondo lint release deploy clean
 
 VERSION ?= 1.12
 NREPL_VERSION ?= nrepl-1.0
@@ -14,6 +14,11 @@ cljfmt:
 
 cljfmt-fix:
 	lein with-profile -user,+$(VERSION),+cljfmt cljfmt fix
+
+kondo:
+	clj-kondo --lint src test
+
+lint: cljfmt eastwood kondo
 
 
 # When releasing, the BUMP variable controls which field in the

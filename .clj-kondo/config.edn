@@ -1,0 +1,20 @@
+{:linters
+ {;; nREPL handlers destructure many message keys (`session`, `transport`,
+  ;; `ns`, ...) and intentionally use only some of them; the rest document the
+  ;; message shape.
+  :unused-binding {:exclude-destructured-keys-in-fn-args true}
+  ;; `(def ^:dynamic *session*)` in the tests is bound by fixtures, never at
+  ;; the root.
+  :uninitialized-var {:level :off}
+  ;; `cider.piggieback` is assembled from three files: `piggieback.clj`
+  ;; conditionally `(load ...)`s either `piggieback_impl.clj` or
+  ;; `piggieback_shim.clj`, both of which `(in-ns 'cider.piggieback)`. The two
+  ;; implementations define the same vars (so each looks like a redefinition),
+  ;; and `load-file` deliberately shadows `clojure.core/load-file`.
+  :redefined-var {:level :off}}
+
+ ;; clj-kondo can't follow the `(load ...)` above, so vars defined in the
+ ;; loaded files look unresolved from `piggieback.clj`.
+ :config-in-ns
+ {cider.piggieback
+  {:linters {:unresolved-symbol {:level :off}}}}}

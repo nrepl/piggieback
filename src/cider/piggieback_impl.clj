@@ -1,7 +1,6 @@
 (in-ns 'cider.piggieback)
 
 (require
- '[clojure.java.io :as io]
  '[clojure.main]
  '[clojure.string :as string]
  '[clojure.tools.reader :as reader]
@@ -13,7 +12,6 @@
  '[cljs.analyzer :as ana]
  '[cljs.tagged-literals :as tags]
  '[nrepl.core :as nrepl]
- '[nrepl.middleware :as middleware]
  '[nrepl.middleware.interruptible-eval :as ieval]
  '[nrepl.misc :as misc :refer [response-for]]
  '[nrepl.transport :as transport])
@@ -161,7 +159,7 @@
                                                          :root-ex (-> root-ex class str)}))
       ((:caught repl-options cljs.repl/repl-caught) err repl-env repl-options))))
 
-(defn- run-cljs-repl [{:keys [session transport ns] :as nrepl-msg}
+(defn- run-cljs-repl [{:keys [session transport ns]}
                       code repl-env compiler-env options]
   (let [initns (if ns (symbol ns) (@session #'ana/*cljs-ns*))
         repl cljs.repl/repl*]
@@ -179,7 +177,7 @@
                 :prompt (fn [])
                 :bind-err false
                 :quit-prompt (fn [])
-                :print (fn [result & rest]
+                :print (fn [_result & _rest]
                          (when (or (not ns)
                                    (not= initns ana/*cljs-ns*))
                            (swap! session assoc #'ana/*cljs-ns* ana/*cljs-ns*))
@@ -286,7 +284,7 @@
                       (ana/get-namespace ana/*cljs-ns*)))]
       (reader/read {:read-cond :allow :features #{:cljs}}
                    (readers/source-logging-push-back-reader
-                    (java.io.StringReader. form-str))))))
+                    (StringReader. form-str))))))
 
 (defn- wrap-pprint
   "Wraps sexp with cljs.pprint/pprint in order for it to return a

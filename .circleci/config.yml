@@ -96,13 +96,20 @@ jobs:
 
   lint:
     description: |
-      Running linters (cljfmt and Eastwood).
+      Running linters (cljfmt, Eastwood and clj-kondo).
       Always uses the latest JDK and Clojure versions.
     executor: jdk25
     environment:
       VERSION: "1.12"
     steps:
       - checkout
+      - run:
+          name: Install clj-kondo
+          command: |
+            apt-get update && apt-get install -y curl unzip
+            curl -sLO https://raw.githubusercontent.com/clj-kondo/clj-kondo/master/script/install-clj-kondo
+            chmod +x install-clj-kondo
+            ./install-clj-kondo --dir /usr/local/bin
       - with_cache:
           cache_version: "lint_v1"
           steps:
@@ -112,6 +119,9 @@ jobs:
             - run:
                 name: Running Eastwood
                 command: make eastwood
+            - run:
+                name: Running clj-kondo
+                command: make kondo
 
   test:
     description: |
