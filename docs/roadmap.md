@@ -53,6 +53,10 @@ it has the longest lead time.
   now a public `cider.piggieback` namespace that lazily loads the
   `cider.piggieback.cljs` implementation, and the clj-kondo workarounds it
   forced are removed.
+- Done: **B1 (pragmatic scope)** - removed the worst setup warts: the per-class
+  `eval`-codegen delegating env is now a single `DelegatingReplEnv` type, and the
+  `:print` side-channel is gone (the session ns is set explicitly after setup).
+  Full setup-ownership was deferred (see below).
 
 ## Phase 1 - Seams and small modernizations
 
@@ -151,22 +155,39 @@ returns a no-op middleware when ClojureScript is absent.
 
 ## Phase 4 - The core refactor
 
-### B1 - Own evaluation; remove the `repl*` driving and the codegen delegator
+### B1 - Tame the `repl*` setup warts (pragmatic scope, done)
 
-Stop driving `cljs.repl/repl*` for setup. Instead: run `-setup` once, establish
-the analyzer/compiler bindings explicitly, run the initial requires as an ordinary
-`evaluate-form`, and use one uniform evaluation path for everything. This
-collapses the two evaluation paths into one, removes the `:print`-callback
-side-channel for reaching compiler state, and eliminates the runtime-generated
-delegating repl-env (which exists only to swallow the `-tear-down` that `repl*`
-would otherwise trigger after setup).
+The original plan was to stop driving `cljs.repl/repl*` for setup entirely: run
+`-setup` once, establish the analyzer/compiler bindings explicitly, run the
+initial requires as an ordinary `evaluate-form`, and use one uniform evaluation
+path for everything. Investigating it showed that owning setup means replicating
+`repl*`'s version-sensitive setup block (the analyzer bindings, the warnings
+merge, `with-core-cljs`/`-setup`, `merge-opts`) - trading coupling to `repl*`'s
+loop for coupling to its setup internals, with the matrix only exercising the
+Node env.
 
-- Why: this split is the root cause of most of Piggieback's historical bugs
-  (compiler-env capture, output routing, ns tracking). Unifying the path is what
-  stops the next decade of the same class of bug.
-- Risk: high. This is the riskiest change in the plan. Do it on a branch, behind
-  the full CI matrix, after M1 and M2 have established clean seams.
-- Depends on: M1, M2.
+So the pragmatic subset was done instead, keeping `repl*` for the setup it does
+correctly while removing the two warts that don't earn their keep:
+
+- The per-class `eval`-codegen delegating env became a single `DelegatingReplEnv`
+  type. The optional `cljs.repl` protocols are delegated to the wrapped env when
+  it implements them and otherwise fall back to `cljs.repl`'s own default, so one
+  type mirrors each env per instance without generating a class per env class.
+- The `:print` side-channel is gone. The `#62` fix already meant the compiler env
+  is created up front and captured unconditionally; the post-setup namespace is
+  always `cljs.user`, so the session ns is set explicitly after setup rather than
+  smuggled out through `:print`.
+
+### B1-full - Own setup outright (deferred)
+
+Still open, if the appetite and broader env coverage (browser, graal) arrive:
+fully replicate setup and collapse to a single evaluation path, deleting the
+delegating env entirely.
+
+- Why: a single eval path is conceptually cleaner and removes the last need for
+  the delegating env.
+- Risk: high, and it replicates fragile `repl*` internals; the pragmatic scope
+  already captured most of the maintainability win at low risk.
 
 ## Phase 5 - Upstream work
 

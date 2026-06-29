@@ -11,6 +11,7 @@
   `UnknownTaggedLiteral`) live in `cider.piggieback`, referred to here as `pb`."
   (:refer-clojure :exclude [load-file])
   (:require
+   [clojure.edn :as edn]
    [clojure.main]
    [clojure.string :as string]
    [clojure.tools.reader :as reader]
@@ -116,65 +117,79 @@
 (defprotocol GetReplEnv
   (get-repl-env [this]))
 
-(def ^:private cljs-repl-protocol-impls
-  {cljs.repl/IReplEnvOptions
-   {:-repl-options (fn [repl-env] (cljs.repl/-repl-options (get-repl-env repl-env)))}
-   cljs.repl/IParseError
-   {:-parse-error (fn [repl-env err build-options]
-                    (cljs.repl/-parse-error (get-repl-env repl-env) err build-options))}
-   cljs.repl/IGetError
-   {:-get-error (fn [repl-env name env build-options]
-                  (cljs.repl/-get-error (get-repl-env repl-env) name env build-options))}
-   cljs.repl/IParseStacktrace
-   {:-parse-stacktrace (fn [repl-env stacktrace err build-options]
-                         (cljs.repl/-parse-stacktrace (get-repl-env repl-env) stacktrace err build-options))}
-   cljs.repl/IPrintStacktrace
-   {:-print-stacktrace (fn [repl-env stacktrace err build-options]
-                         (cljs.repl/-print-stacktrace (get-repl-env repl-env) stacktrace err build-options))}})
+(declare delegating-repl-env)
 
-(defn- generate-delegating-repl-env [repl-env]
-  (let [repl-env-class (class repl-env)
-        classname (string/replace (.getName repl-env-class) \. \_)
-        dclassname (str "Delegating" classname)]
-    (eval
-     (list*
-      'deftype (symbol dclassname)
-      '([repl-env]
-        cider.piggieback.cljs/GetReplEnv
-        (get-repl-env [this] (.-repl-env this))
-        cljs.repl/IJavaScriptEnv
-        (-setup [this options] (cljs.repl/-setup repl-env options))
-        (-evaluate [this a b c] (cljs.repl/-evaluate repl-env a b c))
-        (-load [this ns url] (cljs.repl/-load repl-env ns url))
-        ;; This is the whole reason we are creating this delegator
-        ;; to prevent the call to tear-down
-        (-tear-down [_])
-        clojure.lang.ILookup
-        (valAt [_ k] (get repl-env k))
-        (valAt [_ k default] (get repl-env k default))
-        clojure.lang.Seqable
-        (seq [_] (seq repl-env))
-        clojure.lang.Associative
-        (containsKey [_ k] (contains? repl-env k))
-        (entryAt [_ k] (find repl-env k))
-        (assoc [_ k v] (#'cider.piggieback.cljs/delegating-repl-env (assoc repl-env k v)))
-        clojure.lang.IPersistentCollection
-        (count [_] (count repl-env))
-        (cons [_ entry] (conj repl-env entry))
-        ;; pretty meaningless; most REPL envs are records for the assoc'ing, but they're not values
-        (equiv [_ other] false))))
-    (let [dclass (resolve (symbol dclassname))
-          ctor (resolve (symbol (str "->" dclassname)))]
-      (doseq [[protocol fn-map] cljs-repl-protocol-impls]
-        (when (satisfies? protocol repl-env)
-          (extend dclass protocol fn-map)))
-      @ctor)))
+;; The optional `cljs.repl` protocols (everything but `IJavaScriptEnv`) are
+;; delegated to the wrapped env when it implements them, and otherwise fall back
+;; to the exact default behaviour `cljs.repl` itself uses at the call site (every
+;; one of these is guarded there by `satisfies?`). That way a single type mirrors,
+;; per instance, whichever subset a given env supports - node and the browser env,
+;; for example, implement different subsets - without generating a class per env.
+(deftype ^:private DelegatingReplEnv [repl-env]
+  GetReplEnv
+  (get-repl-env [_] repl-env)
+
+  cljs.repl/IJavaScriptEnv
+  (-setup [_ opts] (cljs.repl/-setup repl-env opts))
+  (-evaluate [_ filename line js] (cljs.repl/-evaluate repl-env filename line js))
+  (-load [_ provides url] (cljs.repl/-load repl-env provides url))
+  ;; the whole reason this type exists: swallow the tear-down repl* triggers
+  (-tear-down [_])
+
+  cljs.repl/IReplEnvOptions
+  (-repl-options [_]
+    (if (satisfies? cljs.repl/IReplEnvOptions repl-env)
+      (cljs.repl/-repl-options repl-env)
+      {}))
+
+  cljs.repl/IParseError
+  (-parse-error [_ err build-options]
+    (if (satisfies? cljs.repl/IParseError repl-env)
+      (cljs.repl/-parse-error repl-env err build-options)
+      err))
+
+  cljs.repl/IGetError
+  (-get-error [_ name env build-options]
+    (if (satisfies? cljs.repl/IGetError repl-env)
+      (cljs.repl/-get-error repl-env name env build-options)
+      (edn/read-string
+       (cljs.repl/evaluate-form repl-env env "<cljs repl>"
+                                `(when ~name
+                                   (pr-str {:value (str ~name)
+                                            :stacktrace (.-stack ~name)}))))))
+
+  cljs.repl/IParseStacktrace
+  (-parse-stacktrace [_ stacktrace err build-options]
+    (when (satisfies? cljs.repl/IParseStacktrace repl-env)
+      (cljs.repl/-parse-stacktrace repl-env stacktrace err build-options)))
+
+  cljs.repl/IPrintStacktrace
+  (-print-stacktrace [_ stacktrace err build-options]
+    (if (satisfies? cljs.repl/IPrintStacktrace repl-env)
+      (cljs.repl/-print-stacktrace repl-env stacktrace err build-options)
+      (#'cljs.repl/print-mapped-stacktrace stacktrace build-options)))
+
+  ;; repl-envs are treated as maps (opts are assoc'd, keys are read), so delegate
+  ;; map access to the wrapped env.
+  clojure.lang.ILookup
+  (valAt [_ k] (get repl-env k))
+  (valAt [_ k default] (get repl-env k default))
+  clojure.lang.Seqable
+  (seq [_] (seq repl-env))
+  clojure.lang.Associative
+  (containsKey [_ k] (contains? repl-env k))
+  (entryAt [_ k] (find repl-env k))
+  (assoc [_ k v] (delegating-repl-env (assoc repl-env k v)))
+  clojure.lang.IPersistentCollection
+  (count [_] (count repl-env))
+  (cons [_ entry] (conj repl-env entry))
+  ;; pretty meaningless; most REPL envs are records for the assoc'ing, but they're not values
+  (equiv [_ _other] false))
 
 (defn delegating-repl-env
   "Wrap `repl-env` in a delegating env with a no-op `-tear-down`."
   [repl-env]
-  (let [ctor (generate-delegating-repl-env repl-env)]
-    (ctor repl-env)))
+  (->DelegatingReplEnv repl-env))
 
 (defn tear-down!
   "Tear down the (unwrapped) repl env."
@@ -272,13 +287,14 @@
 
 (defn setup-repl
   "Drive `cljs.repl/repl*` through a single setup form (the `cljs.user`
-  namespace require), starting from analyzer namespace `init-ns`. After the
-  setup eval, `on-setup` is called with the resulting analyzer namespace and the
-  compiler env, so the caller can persist them.
+  namespace require), starting from analyzer namespace `init-ns`.
 
   This is the one place we drive the full `repl*` loop rather than evaluating
-  forms ourselves; everything else goes through `eval-form`."
-  [repl-env compiler-env options init-ns code on-setup]
+  forms ourselves; everything else goes through `eval-form`. The setup form
+  always switches into `cljs.user`, and the compiler env is the one we passed in,
+  so the caller can read both back directly after this returns - no callback or
+  `:print` side-channel needed."
+  [repl-env compiler-env options init-ns code]
   (binding [ana/*cljs-ns* init-ns]
     (with-in-str (str code " :cljs/quit")
       (cljs.repl/repl*
@@ -294,8 +310,8 @@
          :prompt (fn [])
          :bind-err false
          :quit-prompt (fn [])
-         :print (fn [_result & _rest]
-                  (on-setup ana/*cljs-ns* env/*compiler*))})))))
+         ;; discard the setup form's printed result
+         :print (fn [_result & _rest])})))))
 
 ;; ---------------------------------------------------------------------------
 ;; nREPL handlers
@@ -394,16 +410,17 @@
              (nrepl/code (ns cljs.user
                            (:require [cljs.repl :refer-macros [source doc find-doc
                                                                apropos dir pst]]
-                                     [cljs.pprint]))))
-           ;; implicitly records the compiler env and tracks the namespace
-           (fn [result-ns result-compiler-env]
-             (when (or (not ns) (not= init-ns result-ns))
-               (swap! session assoc ns-var result-ns))
-             (set! pb/*cljs-compiler-env* result-compiler-env))))
+                                     [cljs.pprint]))))))
         (set! pb/*cljs-out-target* out-target)
         (set! pb/*cljs-err-target* err-target))
-      ;; Record the compiler env unconditionally, in case the setup eval errored
-      ;; and the on-setup callback never set it (issue #62).
+      ;; The setup form above switched us into cljs.user; persist that in the
+      ;; session so subsequent evaluations start there. (Setting `ns-var` outside
+      ;; of `setup-repl`'s binding works because we `set-current-ns!`'d to
+      ;; cljs.user before it, so the analyzer ns reverts to cljs.user when
+      ;; `repl*`'s own binding unwinds.)
+      (swap! session assoc ns-var (current-ns))
+      ;; Record the compiler env (the one we created and handed to repl*), even
+      ;; if the setup eval errored (issue #62).
       (set! pb/*cljs-compiler-env* compiler-env)
       (set! pb/*cljs-repl-env* repl-env)
       (set! pb/*cljs-repl-options* opts)
