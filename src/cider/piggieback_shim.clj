@@ -12,6 +12,12 @@
 (def eval-cljs fail-to-call)
 (def do-eval fail-to-call)
 
+(defn describe-cljs
+  "A describe-fn reporting that ClojureScript support is unavailable: this shim
+  is loaded precisely because ClojureScript is not on the classpath."
+  [_msg]
+  {:piggieback {:cljs-repl "unavailable"}})
+
 (defn wrap-cljs-repl [handler]
   (fn [msg]
     (handler msg)))

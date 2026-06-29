@@ -112,6 +112,18 @@
     (testing (pr-str response)
       (is (= "cljs.user" (:ns response))))))
 
+;; Piggieback contributes its per-session ClojureScript status to nREPL's
+;; `describe` response, so tooling can detect cljs mode from the protocol rather
+;; than inferring it. The fixture has an active node REPL, so describe should
+;; report it as such.
+(deftest describe-surfaces-cljs-state
+  (let [response (-> (nrepl/message *session* {:op "describe"})
+                     nrepl/combine-responses)
+        pb (get-in response [:aux :piggieback])]
+    (testing (pr-str response)
+      (is (= "active" (:cljs-repl pb)))
+      (is (= "cljs.repl.node.NodeEnv" (:repl-env-type pb))))))
+
 ;; The forwarding writer stands in for *out*/*err* while the repl env is set up,
 ;; so it must cope with every way Clojure and the repl env write to it, not just
 ;; the (char[], off, len) arity the Node output pump happens to use.
