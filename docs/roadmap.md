@@ -47,6 +47,8 @@ it has the longest lead time.
   status via a `:describe-fn`.
 - Done: **C1** - closing a session tears down an active ClojureScript repl-env,
   via the session's `:close` metadata hook.
+- Done: **C2** - `load-file` evaluates the source sent in the message (unsaved
+  buffers included) instead of re-reading from disk.
 
 ## Phase 1 - Seams and small modernizations
 
@@ -119,7 +121,7 @@ killed, client exit). Today the node subprocess or browser connection leaks.
 - Risk: low to moderate. Needs care around nREPL session lifecycle hooks and not
   double-tearing-down on a normal quit. Add a regression test.
 
-### C2 - `load-file` evaluates the sent content
+### C2 - `load-file` evaluates the sent content (done)
 
 Make `load-file` compile the source provided in the message against the right
 namespace and path, rather than re-reading the file from disk. This matches

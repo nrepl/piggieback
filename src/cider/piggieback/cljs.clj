@@ -243,6 +243,18 @@
     form)
    opts))
 
+(defn load-source
+  "Load ClojureScript `source` (a string of one or more forms) as if it were the
+  file at `filename`, evaluating each form in `repl-env`.
+
+  Unlike `cljs.repl/load-file`, this loads the source handed to it rather than
+  reading the file from disk, so unsaved editor buffers load correctly. The
+  current analyzer namespace is restored afterwards, matching the behaviour of
+  `cljs.repl/load-file`."
+  [repl-env source filename]
+  (binding [ana/*cljs-ns* ana/*cljs-ns*]
+    (cljs.repl/load-stream repl-env filename (StringReader. source))))
+
 ;; ---------------------------------------------------------------------------
 ;; REPL setup
 ;; ---------------------------------------------------------------------------
