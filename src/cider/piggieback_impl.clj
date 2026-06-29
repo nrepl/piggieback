@@ -288,16 +288,40 @@
                                               :value "nil"
                                               :ns (str orig-ns))))))
 
-;; struggled for too long trying to interface directly with cljs.repl/load-file,
-;; so just mocking a "regular" load-file call
-;; this seems to work perfectly, *but* it only loads the content of the file from
-;; disk, not the content of the file sent in the message (in contrast to nREPL on
-;; Clojure). This is necessitated by the expectation of cljs.repl/load-file that
-;; the file being loaded is on disk, in the location implied by the namespace
-;; declaration.
-;; TODO: Either pull in our own `load-file` that doesn't imply this, or raise the issue upstream.
-(defn- load-file [{:keys [session transport file-path] :as msg}]
-  (evaluate (assoc msg :code (format "(load-file %s)" (pr-str file-path)))))
+(defn- do-load-file
+  "Evaluate the ClojureScript source sent in the `load-file` message (its
+  `:file`), against the active repl-env. Mirrors the binding setup of `do-eval`."
+  [{:keys [session transport file file-path file-name] :as msg}]
+  (with-bindings (merge (core/eval-bindings (get @session #'*cljs-compiler-env*)
+                                            (get @session #'*cljs-repl-env*))
+                        ;; On nREPL 1.3+ the session middleware already binds the
+                        ;; session contents, so we must not rebind them here.
+                        (when-not compat/nrepl-1-3+?
+                          @session)
+                        (compat/output-bindings msg))
+    ;; Repoint the repl env's output-pump thread at this message's output (#111).
+    (when *cljs-out-target* (reset! *cljs-out-target* *out*))
+    (when *cljs-err-target* (reset! *cljs-err-target* *err*))
+    (let [repl-env *cljs-repl-env*
+          repl-options *cljs-repl-options*]
+      (try
+        (core/load-source repl-env file (or file-path file-name "<cljs file>"))
+        (.flush ^Writer *out*)
+        (.flush ^Writer *err*)
+        (transport/send transport (response-for msg
+                                                :value "nil"
+                                                :ns (str (core/current-ns))))
+        (catch Throwable t
+          (repl-caught session transport msg t repl-env repl-options))))))
+
+(defn- load-file [{:keys [file file-path] :as msg}]
+  (if (string? file)
+    ;; Evaluate the source sent in the message, so unsaved buffers load
+    ;; correctly (matching nREPL's behaviour on Clojure).
+    (do-load-file msg)
+    ;; No content was sent: fall back to loading the file from disk via the cljs
+    ;; `load-file` special function.
+    (evaluate (assoc msg :code (format "(load-file %s)" (pr-str file-path))))))
 
 (defn describe-cljs
   "A describe-fn (see nREPL's `wrap-describe`) that contributes Piggieback's

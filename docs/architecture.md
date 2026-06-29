@@ -288,6 +288,15 @@ ClojureScript REPL special functions (`cljs.repl/default-special-fns`, merged
 with any from the repl options) are dispatched directly rather than evaluated, so
 things like `load-file`, `in-ns`, and `require` behave like REPL specials.
 
+### Loading a file
+
+The `load-file` op evaluates the source sent in the message (its `:file`), using
+`cljs.repl/load-stream` to read and evaluate every top-level form against the
+active repl-env, with the analyzer namespace restored afterwards. This loads the
+client's buffer content, including unsaved changes, matching Clojure nREPL
+semantics. If a message arrives without `:file` content, Piggieback falls back to
+the cljs `load-file` special function, which reads from disk (roadmap item C2).
+
 ## Structural constraints and known gaps
 
 These are limitations that are either upstream or architectural; each maps to a
@@ -299,10 +308,6 @@ roadmap item.
 - **`*out*` capture.** The forwarding-writer machinery exists only to compensate
   for the node env capturing `*out*` at setup. The clean fix is upstream; roadmap
   U2.
-- **`load-file` loads from disk.** Piggieback's `load-file` re-reads the file
-  from `file-path` on disk rather than evaluating the source sent in the message,
-  which diverges from Clojure nREPL semantics (loading an unsaved buffer loads the
-  saved version). Roadmap C2.
 - **Dropped connections.** Session close now tears the runtime down (roadmap
   C1), but a silently dropped TCP connection does not close the session, so it
   cannot trigger teardown; such a session lingers until an explicit close or

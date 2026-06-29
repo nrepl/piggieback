@@ -153,10 +153,7 @@ REPL are evaluated within the ClojureScript environment.
    `target/classes/public`, etc). Either configure your ring app to serve
    resources from `out`, or pass a `cljs-repl` `:output-dir` option so that a
    reasonable correspondence is established.
-2. The `load-file` nREPL operation will only load the state of files from disk.
-   This is in contrast to "regular" Clojure nREPL operation, where the current
-   state of a file's buffer is loaded without regard to its saved state on disk.
-3. `cider.piggieback/cljs-repl` has to be invoked from within an nREPL session
+2. `cider.piggieback/cljs-repl` has to be invoked from within an nREPL session
    (e.g. evaluated at a connected REPL). It can't be started from Leiningen's
    `:repl-options :init`, which runs at startup before any session exists;
    attempting to do so fails with an error explaining as much.

@@ -124,6 +124,29 @@
       (is (= "active" (:cljs-repl pb)))
       (is (= "cljs.repl.node.NodeEnv" (:repl-env-type pb))))))
 
+;; load-file must evaluate the source *sent in the message* (an editor buffer,
+;; possibly unsaved), not re-read the file from disk. Here the file path points
+;; nowhere on disk, so this only passes if the content is what gets loaded.
+(deftest load-file-evaluates-sent-content
+  (let [content (nrepl/code
+                 (ns piggieback.load-test)
+                 (defn answer [] 42))
+        response (-> (nrepl/message *session*
+                                    {:op "load-file" :file content
+                                     :file-path "nonexistent/piggieback/load_test.cljs"
+                                     :file-name "load_test.cljs"})
+                     nrepl/combine-responses)]
+    (testing (pr-str response)
+      (some-> response :err println)
+      (is (contains? (:status response) "done"))
+      (is (not (contains? (:status response) "eval-error")))))
+  ;; the namespace and var defined by the loaded buffer are now available
+  (let [response (-> (nrepl/message *session* {:op "eval" :code "(piggieback.load-test/answer)"})
+                     nrepl/combine-responses)]
+    (testing (pr-str response)
+      (some-> response :err println)
+      (is (= ["42"] (:value response))))))
+
 ;; The forwarding writer stands in for *out*/*err* while the repl env is set up,
 ;; so it must cope with every way Clojure and the repl env write to it, not just
 ;; the (char[], off, len) arity the Node output pump happens to use.

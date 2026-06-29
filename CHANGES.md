@@ -2,6 +2,7 @@
 
 ## unreleased
 
+* `load-file` now evaluates the source sent in the message (the editor's buffer, including unsaved changes) instead of re-reading the file from disk, matching nREPL's behaviour on Clojure.
 * Tear down an active ClojureScript REPL when its nREPL session is closed, so the JavaScript runtime (e.g. a Node subprocess) doesn't leak when a client disconnects without `:cljs/quit`.
 * Surface ClojureScript status (whether a session has an active cljs REPL, and the repl-env type) in the nREPL `describe` response's `:aux` map.
 
