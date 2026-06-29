@@ -177,6 +177,11 @@ was dropped from ClojureScript in 1.10.741.*
 This section documents some of the main design decisions in Piggieback
 and the differences between similar functionality in nREPL and Piggieback.
 
+For a deeper, diagram-driven tour of the internals (how nREPL, Piggieback and
+the ClojureScript runtime interact, the evaluation lifecycle, and the known
+structural gaps) see [docs/architecture.md](docs/architecture.md). Where
+Piggieback is headed next is tracked in [docs/roadmap.md](docs/roadmap.md).
+
 Perhaps the most important thing to remember is that Piggieback is written in
 Clojure and runs on Clojure. It drives ClojureScript evaluation by using
 ClojureScript's Clojure API (`cljs.repl/IJavaScriptEnv`).  This allows you to
