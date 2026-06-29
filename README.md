@@ -57,12 +57,8 @@ The `:repl-options` bit causes `lein repl` to automagically mix the Piggieback
 nREPL middleware into its default stack.
 
 _If you're using Leiningen directly, or as the basis for the REPLs in your local
-development environment (e.g. CIDER, fireplace, counterclockwise, etc), you're
+development environment (e.g. CIDER, fireplace, etc), you're
 done._ [Skip to starting a ClojureScript REPL](#usage).
-
-### Boot
-
-Contributions welcome!
 
 ### Clojure CLI (aka `tools.deps`)
 
