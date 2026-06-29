@@ -304,12 +304,14 @@ roadmap item.
 Piggieback supports a range of nREPL versions (1.0 through current). The
 differences are handled by runtime feature detection (for example resolving
 `interruptible-eval/evaluator` to decide how to bind per-message state, and
-resolving `replying-PrintWriter` for print middleware). These checks are
-currently spread across the implementation; centralizing them is roadmap item M1.
+resolving `replying-PrintWriter` for print middleware). These checks live in one
+place, the `cider.piggieback.compat` namespace (roadmap item M1).
 
 Piggieback also couples tightly to ClojureScript compiler internals
 (`cljs.analyzer`, `cljs.env`, `cljs.closure`, `cljs.tagged-literals`, and the
 non-public parts of `cljs.repl`). This is largely unavoidable given there is no
 public "evaluate a cljs form in this env and hand me the result" API, but it is
-fragile, and isolating it behind one thin, version-guarded namespace is roadmap
-item M2 (and a prerequisite for B1).
+fragile, so it is confined to a single namespace, `cider.piggieback.cljs`, which
+exposes a small Clojure-facing API the middleware talks to instead of reaching
+into the compiler directly (roadmap item M2). That boundary is also what makes
+the planned evaluation-ownership refactor (B1) tractable.
