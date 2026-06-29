@@ -193,8 +193,9 @@ natively on it (e.g. [nrepl-cljs](https://github.com/djblue/nrepl-cljs)).
 
 Piggieback doesn't have a hard dependency on ClojureScript, as users are
 expected to provide the necessary ClojureScript dependency themselves. If
-ClojureScript is not present, Piggieback simply won't do anything (see
-`piggieback_shim.clj` for details).
+ClojureScript is not present, Piggieback simply won't do anything: the
+`cider.piggieback` middleware is a no-op and `cljs-repl` reports the missing
+dependency, rather than failing to load.
 
 This allows tools to safely load Piggieback without
 having to consider whether something would blow up.
