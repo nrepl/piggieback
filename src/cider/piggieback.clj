@@ -12,7 +12,7 @@
   (if (try
         (require ns)
         true
-        (catch java.io.FileNotFoundException e
+        (catch java.io.FileNotFoundException _e
           false))
     `~body
     `~else))

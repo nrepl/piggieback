@@ -2,7 +2,7 @@
 
 (def ^:private
   fail-to-call
-  (fn [& args]
+  (fn [& _args]
     (throw (ex-info "Unable to load ClojureScript, did you forget a dependency?"
                     {}))))
 

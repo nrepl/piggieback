@@ -1,0 +1,1 @@
+["^ ","~$read-lstr",["^ ","~:row",5,"~:col",1,"~:fixed-arities",["~#set",[1]],"~:name","^0","~:ns","~$cider.test-data-readers","~:top-ns","^7","~:arities",["^ ","~i1",["^ ","~:ret","~:vector"]],"~:type","~:fn"],"~:filename","test/cider/test_data_readers.clj"]
