@@ -22,3 +22,4 @@ nashorn*
 .cpcache
 .eastwood
 \.\#*
+.clj-kondo/.cache/
