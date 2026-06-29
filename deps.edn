@@ -11,14 +11,14 @@
  {;; Latest stable versions, used for `clj -M:dev` and as the default test deps.
   :dev
   {:extra-paths ["env/repl"]
-   :extra-deps {org.clojure/clojure {:mvn/version "1.12.0"}
+   :extra-deps {org.clojure/clojure {:mvn/version "1.12.5"}
                 org.clojure/clojurescript {:mvn/version "1.12.145"}
                 nrepl/nrepl {:mvn/version "1.7.0"}}}
 
   ;; Run the test suite: `clj -X:test`
   :test
   {:extra-paths ["test" "env/test"]
-   :extra-deps {org.clojure/clojure {:mvn/version "1.12.0"}
+   :extra-deps {org.clojure/clojure {:mvn/version "1.12.5"}
                 org.clojure/clojurescript {:mvn/version "1.12.145"}
                 nrepl/nrepl {:mvn/version "1.7.0"}
                 io.github.cognitect-labs/test-runner
