@@ -2,6 +2,8 @@
 
 ## unreleased
 
+* [#154](https://github.com/nrepl/piggieback/issues/154): Fix `load-file` failing with "No such namespace" when the file requires a foreign lib (e.g. a cljsjs package).
+
 ## 0.7.0 (2026-06-30)
 
 * `load-file` now evaluates the source sent in the message (the editor's buffer, including unsaved changes) instead of re-reading the file from disk, matching nREPL's behaviour on Clojure.

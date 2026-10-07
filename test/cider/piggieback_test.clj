@@ -161,6 +161,30 @@
       (some-> response :err println)
       (is (= ["42"] (:value response))))))
 
+;; Regression test for https://github.com/nrepl/piggieback/issues/154
+;; Loading a file whose ns requires a foreign lib (e.g. a cljsjs package) failed
+;; with "No such namespace", as the forms were evaluated without the repl options
+;; that tell the compiler about the libs declared in deps.cljs files.
+(deftest load-file-with-foreign-lib-dependency
+  (let [content (nrepl/code
+                 (ns piggieback.foreign-load-test
+                   (:require [piggieback-test.foreign-lib]))
+                 (defn answer [] (.answer js/piggiebackForeignLib)))
+        response (-> (nrepl/message *session*
+                                    {:op "load-file" :file content
+                                     :file-path "nonexistent/piggieback/foreign_load_test.cljs"
+                                     :file-name "foreign_load_test.cljs"})
+                     nrepl/combine-responses)]
+    (testing (pr-str response)
+      (some-> response :err println)
+      (is (contains? (:status response) "done"))
+      (is (not (contains? (:status response) "eval-error")))))
+  (let [response (-> (nrepl/message *session* {:op "eval" :code "(piggieback.foreign-load-test/answer)"})
+                     nrepl/combine-responses)]
+    (testing (pr-str response)
+      (some-> response :err println)
+      (is (= ["42"] (:value response))))))
+
 ;; The forwarding writer stands in for *out*/*err* while the repl env is set up,
 ;; so it must cope with every way Clojure and the repl env write to it, not just
 ;; the (char[], off, len) arity the Node output pump happens to use.

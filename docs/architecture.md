@@ -314,8 +314,11 @@ things like `load-file`, `in-ns`, and `require` behave like REPL specials.
 
 The `load-file` op evaluates the source sent in the message (its `:file`), using
 `cljs.repl/load-stream` to read and evaluate every top-level form against the
-active repl-env, with the analyzer namespace restored afterwards. This loads the
-client's buffer content, including unsaved changes, matching Clojure nREPL
+active repl-env, with the analyzer namespace restored afterwards. `load-stream`
+reads the repl options from `cljs.repl/*repl-opts*`, which only `cljs.repl/repl*`
+binds, so Piggieback binds it to the session's repl options for the duration;
+without them an `ns` form can't resolve foreign libs such as cljsjs packages
+(issue #154). This loads the client's buffer content, including unsaved changes, matching Clojure nREPL
 semantics. If a message arrives without `:file` content, Piggieback falls back to
 the cljs `load-file` special function, which reads from disk (roadmap item C2).
 
