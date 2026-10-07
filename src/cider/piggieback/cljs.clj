@@ -200,6 +200,22 @@
 ;; Reading
 ;; ---------------------------------------------------------------------------
 
+(def ^:private load-data-readers
+  "`cljs.analyzer/load-data-readers` (ClojureScript 1.11+), or nil."
+  (resolve 'cljs.analyzer/load-data-readers))
+
+(defn- data-readers
+  "The data readers for reading ClojureScript, mirroring `cljs.repl`.
+
+  `tags/*cljs-data-readers*` carries Clojure's own `*data-readers*`, read from
+  data_readers.cljc with the `:clj` feature. ClojureScript 1.11+ also reads them
+  with the `:cljs` feature, so a reader with a `#?(:cljs ...)` branch gets its
+  ClojureScript-side fn rather than one returning a JVM object the compiler
+  can't emit (issue #128)."
+  []
+  (merge tags/*cljs-data-readers*
+         (when load-data-readers (load-data-readers))))
+
 (defn read-form
   "Read a single ClojureScript form from `form-str`, with the cljs data readers
   and the current namespace's alias map in place. Returns nil for blank input."
@@ -207,7 +223,7 @@
   (when-not (string/blank? form-str)
     (binding [*ns* (create-ns ana/*cljs-ns*)
               reader/resolve-symbol ana/resolve-symbol
-              reader/*data-readers* tags/*cljs-data-readers*
+              reader/*data-readers* (data-readers)
               reader/*alias-map*
               (apply merge
                      ((juxt :requires :require-macros)

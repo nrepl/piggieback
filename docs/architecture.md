@@ -294,7 +294,10 @@ session atom and updated after each eval, so that `in-ns` and namespace switches
 persist across messages and are reported back as `:ns`. The reader is configured
 with the analyzer's `resolve-symbol`, the cljs data readers, and an alias map
 reconstructed from the current namespace's `:requires` / `:require-macros`, so
-that alias-qualified keywords and reader conditionals read correctly.
+that alias-qualified keywords and reader conditionals read correctly. Like
+`cljs.repl`, the data readers include those from `data_readers.cljc` read with
+the `:cljs` feature (ClojureScript 1.11+), so a reader's `#?(:cljs ...)` branch
+is the one used.
 
 ### Result wrapping: `*1` `*2` `*3` `*e` and pretty-printing
 
