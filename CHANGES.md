@@ -2,6 +2,8 @@
 
 ## unreleased
 
+## 0.7.1 (2026-10-07)
+
 * [#154](https://github.com/nrepl/piggieback/issues/154): Fix `load-file` failing with "No such namespace" when the file requires a foreign lib (e.g. a cljsjs package).
 
 ## 0.7.0 (2026-06-30)
