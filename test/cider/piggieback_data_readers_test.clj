@@ -16,3 +16,14 @@
     (binding [ana/*cljs-ns* 'cljs.user]
       (is (= [:cider.test-data-readers/lstr "gaol@en-uk"]
              (cider.piggieback/read-cljs-string "#piggieback.test/lstr \"gaol@en-uk\""))))))
+
+;; A reader declared with a reader conditional must resolve to its :cljs branch,
+;; as it does in ClojureScript's own REPL. The :clj branch typically returns a
+;; JVM object, which the compiler then fails to emit as a constant. ClojureScript
+;; only reads data_readers.cljc with the :cljs feature since 1.11.
+(deftest cljs-branch-of-data-readers-is-used
+  (when (resolve 'cljs.analyzer/load-data-readers)
+    (env/with-compiler-env (env/default-compiler-env)
+      (binding [ana/*cljs-ns* 'cljs.user]
+        (is (= [:cider.test-data-readers/lstr-cljs "gaol@en-uk"]
+               (cider.piggieback/read-cljs-string "#piggieback.test/cljs-lstr \"gaol@en-uk\"")))))))

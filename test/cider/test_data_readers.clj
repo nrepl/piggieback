@@ -1,6 +1,9 @@
 (ns cider.test-data-readers
-  "A trivial data reader used by the #128 regression test. Kept dependency-free
+  "Trivial data readers used by the #128 regression tests. Kept dependency-free
   because it is required early, while Clojure loads data_readers.cljc.")
 
 (defn read-lstr [s]
   [::lstr s])
+
+(defn read-lstr-cljs [s]
+  [::lstr-cljs s])

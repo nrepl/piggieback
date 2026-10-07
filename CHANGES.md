@@ -2,6 +2,8 @@
 
 ## unreleased
 
+* [#128](https://github.com/nrepl/piggieback/issues/128): Use the `:cljs` branch of data readers declared with reader conditionals in `data_readers.cljc`, like ClojureScript's own REPL does (ClojureScript 1.11+).
+
 ## 0.7.1 (2026-10-07)
 
 * [#154](https://github.com/nrepl/piggieback/issues/154): Fix `load-file` failing with "No such namespace" when the file requires a foreign lib (e.g. a cljsjs package).
