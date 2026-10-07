@@ -276,9 +276,16 @@
   Unlike `cljs.repl/load-file`, this loads the source handed to it rather than
   reading the file from disk, so unsaved editor buffers load correctly. The
   current analyzer namespace is restored afterwards, matching the behaviour of
-  `cljs.repl/load-file`."
-  [repl-env source filename]
-  (binding [ana/*cljs-ns* ana/*cljs-ns*]
+  `cljs.repl/load-file`.
+
+  `load-stream` takes the repl options from `cljs.repl/*repl-opts*` (bound by
+  `cljs.repl/repl*`, whose loop we don't run), so we bind it to `opts` here.
+  Without them, evaluating an `ns` form rebuilds the compiler's JS dependency
+  index minus the foreign libs declared in deps.cljs files (e.g. cljsjs
+  packages), and requiring one fails with \"No such namespace\" (issue #154)."
+  [repl-env source filename opts]
+  (binding [ana/*cljs-ns* ana/*cljs-ns*
+            cljs.repl/*repl-opts* opts]
     (cljs.repl/load-stream repl-env filename (StringReader. source))))
 
 ;; ---------------------------------------------------------------------------
@@ -543,7 +550,7 @@
     (let [repl-env pb/*cljs-repl-env*
           repl-options pb/*cljs-repl-options*]
       (try
-        (load-source repl-env file (or file-path file-name "<cljs file>"))
+        (load-source repl-env file (or file-path file-name "<cljs file>") repl-options)
         (.flush ^Writer *out*)
         (.flush ^Writer *err*)
         (transport/send transport (response-for msg
