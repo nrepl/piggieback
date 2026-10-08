@@ -185,6 +185,21 @@
       (some-> response :err println)
       (is (= ["42"] (:value response))))))
 
+;; Keywords qualified with an :as-alias alias must read, as they do in
+;; ClojureScript's own REPL. :as-alias needs ClojureScript 1.11+.
+(deftest as-alias-keywords
+  (when (resolve 'cljs.analyzer/get-aliases)
+    (try
+      (dorun (nrepl/message *session* {:op "eval"
+                                       :code "(ns piggieback.as-alias-test (:require [piggieback.not-loaded :as-alias nl]))"}))
+      (let [response (-> (nrepl/message *session* {:op "eval" :code "::nl/kw"})
+                         nrepl/combine-responses)]
+        (testing (pr-str response)
+          (some-> response :err println)
+          (is (= [":piggieback.not-loaded/kw"] (:value response)))))
+      (finally
+        (dorun (nrepl/message *session* {:op "eval" :code "(in-ns 'cljs.user)"}))))))
+
 ;; The forwarding writer stands in for *out*/*err* while the repl env is set up,
 ;; so it must cope with every way Clojure and the repl env write to it, not just
 ;; the (char[], off, len) arity the Node output pump happens to use.

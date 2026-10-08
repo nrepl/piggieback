@@ -2,6 +2,7 @@
 
 ## unreleased
 
+* [#158](https://github.com/nrepl/piggieback/pull/158): Read keywords qualified with an `:as-alias` alias (e.g. `::foo/bar`) at the REPL (ClojureScript 1.11+).
 * [#128](https://github.com/nrepl/piggieback/issues/128): Use the `:cljs` branch of data readers declared with reader conditionals in `data_readers.cljc`, like ClojureScript's own REPL does (ClojureScript 1.11+).
 
 ## 0.7.1 (2026-10-07)
