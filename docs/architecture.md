@@ -106,7 +106,7 @@ out of the session by name):
 | `*cljs-repl-env*` | the active (delegating) repl-env; also the "are we in cljs?" flag |
 | `*cljs-compiler-env*` | the ClojureScript compiler environment (analyzer/compiler state) |
 | `*cljs-repl-options*` | the merged repl options |
-| `*cljs-warnings*` / `*cljs-warning-handlers*` | analyzer warning configuration |
+| `*cljs-repl-bindings*` | the thread bindings ClojureScript is evaluated with (see Evaluating a form) |
 | `*original-clj-ns*` | the Clojure namespace to restore on `:cljs/quit` |
 | `*cljs-out-target*` / `*cljs-err-target*` | atoms repointed at the current message's output (see Output forwarding) |
 
@@ -215,15 +215,20 @@ handler so unknown tagged literals round-trip) before sending it as `:value`.
 
 Skipping `repl*`'s loop means skipping the dynamic environment it sets up around
 reading and evaluating, so Piggieback recreates it: `read-bindings` and
-`eval-bindings` in `cider.piggieback.cljs` bind the same vars `repl*` does, with
-values derived from the session's repl options and from the warnings and warning
-handlers in place when `cljs-repl` started (figwheel-main installs its own
-handlers around it). A var missing there turns into a
-silently ignored repl option (`:warnings`, or `*repl-opts*` in issue #154) or a
-root-binding error when code `set!`s it (issue #95). The
-`cider.piggieback-repl-parity-test` runs the real `repl*` against a stub env and
-fails if the two ever bind different vars or values, so a ClojureScript release
-that changes `repl*` shows up in the test matrix.
+`eval-bindings` in `cider.piggieback.cljs` bind the same vars `repl*` does. A var
+missing there turns into a silently ignored repl option (`:warnings`, or
+`*repl-opts*` in issue #154) or a root-binding error when code `set!`s it (issue
+#95). The `cider.piggieback-repl-parity-test` runs the real `repl*` against a
+stub env and fails if the two ever bind different vars or values, so a
+ClojureScript release that changes `repl*` shows up in the test matrix.
+
+`repl*` sets those bindings up once, inside whatever its caller bound around it,
+and they last for the life of the REPL. So `cljs-repl` computes them once too, in
+the caller's dynamic environment, and stores them in the session as
+`*cljs-repl-bindings*`, together with the caller's own bindings (minus the
+session's and nREPL's per-message ones). figwheel-main relies on this: it
+installs its warning handlers and binds its `*config*` around `cljs-repl` (issue
+#93).
 
 Note the two distinct evaluation paths (setup via `repl*`, steady-state via
 `evaluate-form`). Fully unifying them onto one path was considered (roadmap item

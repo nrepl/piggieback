@@ -18,10 +18,20 @@
    [nrepl.core :as nrepl]
    [nrepl.server :as server]))
 
+;; Stands in for a tool's own state, bound around cljs-repl.
+(def ^:dynamic *tool-config* nil)
+
+(def caller-compiler-env (delay (env/default-compiler-env)))
+
+(def ^:private evaluated-with (atom nil))
+
 (defrecord StubEnv []
   cljs.repl/IJavaScriptEnv
   (-setup [_ _])
-  (-evaluate [_ _ _ _] {:status :success :value "nil"})
+  (-evaluate [_ _ _ _]
+    (reset! evaluated-with {:tool-config *tool-config*
+                            :compiler-env env/*compiler*})
+    {:status :success :value "nil"})
   (-load [_ _ _])
   (-tear-down [_]))
 
@@ -137,10 +147,11 @@
 (defn record-warning [warning-type _env _extra]
   (swap! seen-warnings conj warning-type))
 
-;; repl* computes its bindings once, from the dynamic environment it's started
-;; in. Tools rely on that: figwheel-main installs its own warning handlers around
-;; cljs-repl, and they must still be the ones in effect for later evaluations.
-(deftest warning-handlers-from-repl-start-are-used
+;; repl* evaluates within the dynamic environment it's started in, and computes
+;; its bindings from it, including the compiler env. Tools rely on that:
+;; figwheel-main installs its own warning handlers around cljs-repl and binds its
+;; config (issue #93), and they must still be in effect for later evaluations.
+(deftest bindings-from-repl-start-are-used
   (with-open [^nrepl.server.Server server
               (server/start-server
                :bind "127.0.0.1"
@@ -155,13 +166,19 @@
                 {:op "eval"
                  :code (nrepl/code
                         (binding [cljs.analyzer/*cljs-warning-handlers*
-                                  [cider.piggieback-repl-parity-test/record-warning]]
+                                  [cider.piggieback-repl-parity-test/record-warning]
+                                  cider.piggieback-repl-parity-test/*tool-config* :configured
+                                  cljs.env/*compiler* @cider.piggieback-repl-parity-test/caller-compiler-env]
                           (cider.piggieback/cljs-repl
                            (cider.piggieback-repl-parity-test/->StubEnv)
                            ;; keeps this compilation out of the shared "out" dir
                            :output-dir "target/piggieback-parity-out")))}))
         (reset! seen-warnings [])
+        (reset! evaluated-with nil)
         (dorun (nrepl/message session {:op "eval" :code "(when false undeclared-xyz)"}))
         (is (some #{:undeclared-var} @seen-warnings))
+        (is (= :configured (:tool-config @evaluated-with)))
+        ;; true? keeps a failure from printing the whole compiler env
+        (is (true? (identical? @caller-compiler-env (:compiler-env @evaluated-with))))
         (finally
           (dorun (nrepl/message session {:op "eval" :code ":cljs/quit"})))))))

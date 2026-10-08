@@ -23,8 +23,7 @@
 (def ^:dynamic *cljs-repl-env* nil)
 (def ^:dynamic *cljs-compiler-env* nil)
 (def ^:dynamic *cljs-repl-options* nil)
-(def ^:dynamic *cljs-warnings* nil)
-(def ^:dynamic *cljs-warning-handlers* nil)
+(def ^:dynamic *cljs-repl-bindings* nil)
 (def ^:dynamic *original-clj-ns* nil)
 
 ;; Atoms holding the Writer that the ClojureScript repl env's output should be
