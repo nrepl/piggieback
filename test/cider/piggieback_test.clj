@@ -185,6 +185,19 @@
       (some-> response :err println)
       (is (= ["42"] (:value response))))))
 
+;; The analyzer `set!`s these when they're `set!` in ClojureScript code, which
+;; needs a thread binding for each of them.
+(deftest set!-analyzer-vars
+  (doseq [code ["(set! *unchecked-if* true)"
+                "(set! *unchecked-arrays* true)"
+                "(set! *warn-on-infer* true)"]]
+    (let [response (-> (nrepl/message *session* {:op "eval" :code code})
+                       nrepl/combine-responses)]
+      (testing code
+        (some-> response :err println)
+        (is (= ["true"] (:value response)))
+        (is (not (contains? (:status response) "eval-error")))))))
+
 ;; Keywords qualified with an :as-alias alias must read, as they do in
 ;; ClojureScript's own REPL. :as-alias needs ClojureScript 1.11+.
 (deftest as-alias-keywords

@@ -2,6 +2,7 @@
 
 ## unreleased
 
+* [#158](https://github.com/nrepl/piggieback/pull/158): Evaluate with the same dynamic bindings as `cljs.repl`, so the `:warnings`, `:warn-on-undeclared`, `:repl-verbose`, `:static-fns`, `:fn-invoke-direct` and `:checked-arrays` options of `cljs-repl` take effect, warning handlers installed around `cljs-repl` (e.g. by figwheel-main) are used, and `(set! *unchecked-arrays* true)` no longer fails.
 * [#158](https://github.com/nrepl/piggieback/pull/158): Read keywords qualified with an `:as-alias` alias (e.g. `::foo/bar`) at the REPL (ClojureScript 1.11+).
 * [#128](https://github.com/nrepl/piggieback/issues/128): Use the `:cljs` branch of data readers declared with reader conditionals in `data_readers.cljc`, like ClojureScript's own REPL does (ClojureScript 1.11+).
 

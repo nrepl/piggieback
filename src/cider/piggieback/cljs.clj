@@ -57,14 +57,38 @@
 (defn warning-handlers [] ana/*cljs-warning-handlers*)
 
 (defn eval-bindings
-  "Binding map of the ClojureScript analyzer/compiler dynamic vars needed for a
-  single evaluation. `compiler-env` and `repl-env` come from the session."
-  [compiler-env repl-env]
-  {#'ana/*cljs-warnings* ana/*cljs-warnings*
-   #'ana/*cljs-warning-handlers* ana/*cljs-warning-handlers*
-   #'ana/*unchecked-if* ana/*unchecked-if*
-   #'env/*compiler* compiler-env
-   #'cljs.repl/*repl-env* repl-env})
+  "Binding map for evaluating in `repl-env`, with `opts` the repl options (see
+  `build-opts`).
+
+  We evaluate outside of `cljs.repl/repl*`'s loop, so this recreates the
+  bindings `repl*` establishes around it, relative to the current warnings and
+  warning handlers as `repl*` does. Without them repl options are silently
+  ignored (e.g. `:warnings`, issue #154 for `*repl-opts*`), and an analyzer var
+  that code `set!`s has no thread binding to set (issue #95). The
+  `cider.piggieback-repl-parity-test` checks this against `repl*` itself."
+  [compiler-env repl-env opts]
+  (let [{:keys [warnings warn-on-undeclared repl-verbose checked-arrays
+                static-fns fn-invoke-direct]
+         :or {warn-on-undeclared true}} opts]
+    {#'env/*compiler* compiler-env
+     #'cljs.repl/*repl-env* repl-env
+     #'cljs.repl/*repl-opts* opts
+     #'cljs.repl/*cljs-verbose* repl-verbose
+     #'ana/*unchecked-if* false
+     #'ana/*unchecked-arrays* false
+     #'ana/*cljs-warnings*
+     (merge ana/*cljs-warnings*
+            (if (boolean? warnings)
+              (zipmap (keys ana/*cljs-warnings*) (repeat warnings))
+              warnings)
+            (zipmap [:unprovided :undeclared-var :undeclared-ns :undeclared-ns-form]
+                    (repeat (if (false? warnings) false warn-on-undeclared)))
+            {:infer-warning false})
+     ;; repl* leaves this one alone, but macros may `set!` it too
+     #'ana/*cljs-warning-handlers* ana/*cljs-warning-handlers*
+     #'ana/*checked-arrays* checked-arrays
+     #'ana/*cljs-static-fns* static-fns
+     #'ana/*fn-invoke-direct* (and static-fns fn-invoke-direct)}))
 
 (defn analyzer-env
   "An empty analyzer environment scoped to `ns-sym`."
@@ -230,15 +254,22 @@
            ((juxt :requires :require-macros)
             (ana/get-namespace ns-sym)))))
 
+(defn read-bindings
+  "Binding map for reading ClojureScript in the current namespace. Mirrors the
+  bindings `cljs.repl/repl*` establishes around reading, which the
+  `cider.piggieback-repl-parity-test` checks."
+  []
+  {#'*ns* (create-ns ana/*cljs-ns*)
+   #'reader/resolve-symbol ana/resolve-symbol
+   #'reader/*data-readers* (data-readers)
+   #'reader/*alias-map* (alias-map ana/*cljs-ns*)})
+
 (defn read-form
   "Read a single ClojureScript form from `form-str`, with the cljs data readers
   and the current namespace's alias map in place. Returns nil for blank input."
   [form-str]
   (when-not (string/blank? form-str)
-    (binding [*ns* (create-ns ana/*cljs-ns*)
-              reader/resolve-symbol ana/resolve-symbol
-              reader/*data-readers* (data-readers)
-              reader/*alias-map* (alias-map ana/*cljs-ns*)]
+    (with-bindings (read-bindings)
       (reader/read {:read-cond :allow :features #{:cljs}}
                    (readers/source-logging-push-back-reader
                     (StringReader. form-str))))))
@@ -305,14 +336,10 @@
   current analyzer namespace is restored afterwards, matching the behaviour of
   `cljs.repl/load-file`.
 
-  `load-stream` takes the repl options from `cljs.repl/*repl-opts*` (bound by
-  `cljs.repl/repl*`, whose loop we don't run), so we bind it to `opts` here.
-  Without them, evaluating an `ns` form rebuilds the compiler's JS dependency
-  index minus the foreign libs declared in deps.cljs files (e.g. cljsjs
-  packages), and requiring one fails with \"No such namespace\" (issue #154)."
-  [repl-env source filename opts]
-  (binding [ana/*cljs-ns* ana/*cljs-ns*
-            cljs.repl/*repl-opts* opts]
+  Must run under `eval-bindings`, as `load-stream` takes the repl options from
+  `cljs.repl/*repl-opts*` (issue #154)."
+  [repl-env source filename]
+  (binding [ana/*cljs-ns* ana/*cljs-ns*]
     (cljs.repl/load-stream repl-env filename (StringReader. source))))
 
 ;; ---------------------------------------------------------------------------
@@ -483,12 +510,25 @@
                (func))
             #(transport/send transport (response-for msg :status :done))))))
 
+(defn- session-eval-bindings
+  "`eval-bindings` for the ClojureScript REPL in `session`, computed against the
+  warnings and warning handlers that were in place when `cljs-repl` started,
+  like `repl*` computes its own. figwheel-main, for one, installs its warning
+  handlers around `cljs-repl`."
+  [session]
+  (let [s @session]
+    (binding [ana/*cljs-warnings* (or (s #'pb/*cljs-warnings*) ana/*cljs-warnings*)
+              ana/*cljs-warning-handlers* (or (s #'pb/*cljs-warning-handlers*)
+                                              ana/*cljs-warning-handlers*)]
+      (eval-bindings (s #'pb/*cljs-compiler-env*)
+                     (s #'pb/*cljs-repl-env*)
+                     (s #'pb/*cljs-repl-options*)))))
+
 (defn eval-cljs [repl-env env form file opts]
   (eval-form repl-env env form file opts (::print opts)))
 
 (defn do-eval [{:keys [session transport ^String code file ns] :as msg}]
-  (with-bindings (merge (eval-bindings (get @session #'pb/*cljs-compiler-env*)
-                                       (get @session #'pb/*cljs-repl-env*))
+  (with-bindings (merge (session-eval-bindings session)
                         ;; On nREPL 1.3+ the session middleware already binds the
                         ;; session contents, so we must not rebind them here.
                         (when-not compat/nrepl-1-3+?
@@ -567,8 +607,7 @@
   "Evaluate the ClojureScript source sent in the `load-file` message (its
   `:file`), against the active repl-env. Mirrors the binding setup of `do-eval`."
   [{:keys [session transport file file-path file-name] :as msg}]
-  (with-bindings (merge (eval-bindings (get @session #'pb/*cljs-compiler-env*)
-                                       (get @session #'pb/*cljs-repl-env*))
+  (with-bindings (merge (session-eval-bindings session)
                         (when-not compat/nrepl-1-3+?
                           @session)
                         (compat/output-bindings msg))
@@ -577,7 +616,7 @@
     (let [repl-env pb/*cljs-repl-env*
           repl-options pb/*cljs-repl-options*]
       (try
-        (load-source repl-env file (or file-path file-name "<cljs file>") repl-options)
+        (load-source repl-env file (or file-path file-name "<cljs file>"))
         (.flush ^Writer *out*)
         (.flush ^Writer *err*)
         (transport/send transport (response-for msg
