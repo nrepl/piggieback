@@ -186,17 +186,37 @@
       (is (= ["42"] (:value response))))))
 
 ;; The analyzer `set!`s these when they're `set!` in ClojureScript code, which
-;; needs a thread binding for each of them.
+;; needs a thread binding for each of them. As in cljs.repl, the change lasts
+;; for the rest of the REPL session, except in a loaded file, where it lasts
+;; until the end of the file.
 (deftest set!-analyzer-vars
-  (doseq [code ["(set! *unchecked-if* true)"
-                "(set! *unchecked-arrays* true)"
-                "(set! *warn-on-infer* true)"]]
-    (let [response (-> (nrepl/message *session* {:op "eval" :code code})
-                       nrepl/combine-responses)]
-      (testing code
-        (some-> response :err println)
-        (is (= ["true"] (:value response)))
-        (is (not (contains? (:status response) "eval-error")))))))
+  (let [settings '[*unchecked-if* *unchecked-arrays* *warn-on-infer*]
+        eval-code #(-> (nrepl/message *session* {:op "eval" :code %})
+                       nrepl/combine-responses)
+        ;; with *unchecked-if*, `if` uses JavaScript truthiness, where 0 is false
+        zero-test "(let [zero 0] (if zero :truthy :falsy))"]
+    (try
+      (doseq [setting settings
+              :let [code (format "(set! %s true)" setting)
+                    response (eval-code code)]]
+        (testing code
+          (some-> response :err println)
+          (is (= ["true"] (:value response)))
+          (is (not (contains? (:status response) "eval-error")))))
+      (testing "a set! in an eval lasts"
+        (is (= [":falsy"] (:value (eval-code zero-test)))))
+      (eval-code "(set! *unchecked-if* false)")
+      (dorun (nrepl/message *session*
+                            {:op "load-file"
+                             :file (str "(set! *unchecked-if* true) (def zero-in-file " zero-test ")")
+                             :file-path "nonexistent/piggieback/unchecked.cljs"}))
+      (testing "a set! in a loaded file applies to the rest of the file"
+        (is (= [":falsy"] (:value (eval-code "zero-in-file")))))
+      (testing "but not beyond it"
+        (is (= [":truthy"] (:value (eval-code zero-test)))))
+      (finally
+        (doseq [setting settings]
+          (eval-code (format "(set! %s false)" setting)))))))
 
 ;; Keywords qualified with an :as-alias alias must read, as they do in
 ;; ClojureScript's own REPL. :as-alias needs ClojureScript 1.11+.

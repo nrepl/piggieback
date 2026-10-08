@@ -228,7 +228,9 @@ the caller's dynamic environment, and stores them in the session as
 `*cljs-repl-bindings*`, together with the caller's own bindings (minus the
 session's and nREPL's per-message ones). figwheel-main relies on this: it
 installs its warning handlers and binds its `*config*` around `cljs-repl` (issue
-#93).
+#93). Each evaluation stores their values back afterwards, so a `set!` of one,
+e.g. `(set! *warn-on-infer* true)`, lasts for the rest of the session as it does
+in `repl*` (a loaded file's `set!`s stay within the file, see Loading a file).
 
 Note the two distinct evaluation paths (setup via `repl*`, steady-state via
 `evaluate-form`). Fully unifying them onto one path was considered (roadmap item
@@ -268,7 +270,8 @@ leaking the JavaScript runtime (roadmap item C1).
 `:cljs/quit` resets the session's ClojureScript vars both in the session atom
 and, where they're thread-bound, in the bindings themselves. nREPL 1.3+ copies a
 message's bindings back into the session once it completes, which would
-otherwise restore the old values and leave the session in ClojureScript mode.
+otherwise restore the old values and leave the session in ClojureScript mode
+(nrepl/nrepl#497). Storing the evaluation bindings back works the same way.
 
 Note this covers session *close*, not a silently dropped TCP connection: nREPL
 sessions deliberately outlive their connection (so you can reconnect, as the
@@ -339,7 +342,10 @@ things like `load-file`, `in-ns`, and `require` behave like REPL specials.
 
 The `load-file` op evaluates the source sent in the message (its `:file`), using
 `cljs.repl/load-stream` to read and evaluate every top-level form against the
-active repl-env, with the analyzer namespace restored afterwards. It runs under
+active repl-env, with the analyzer namespace restored afterwards. Like
+`cljs.compiler/compile-file`, which `cljs.repl/load-file` compiles through, it
+starts the file with the unchecked flags off and keeps the file's `set!`s of
+analyzer settings to the file. It runs under
 the same bindings as evaluation, which matters here because `load-stream` reads
 the repl options from `cljs.repl/*repl-opts*`; without them an `ns` form can't
 resolve foreign libs such as cljsjs packages (issue #154). This loads the

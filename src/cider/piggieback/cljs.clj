@@ -328,14 +328,19 @@
   file at `filename`, evaluating each form in `repl-env`.
 
   Unlike `cljs.repl/load-file`, this loads the source handed to it rather than
-  reading the file from disk, so unsaved editor buffers load correctly. The
-  current analyzer namespace is restored afterwards, matching the behaviour of
-  `cljs.repl/load-file`.
+  reading the file from disk, so unsaved editor buffers load correctly. As
+  `cljs.repl/load-file` does, it starts the file with the unchecked flags off,
+  and restores the current analyzer namespace, and any analyzer settings the
+  file `set!`s (e.g. `*warn-on-infer*`), afterwards.
 
   Must run under `eval-bindings`, as `load-stream` takes the repl options from
   `cljs.repl/*repl-opts*` (issue #154)."
   [repl-env source filename]
-  (binding [ana/*cljs-ns* ana/*cljs-ns*]
+  (binding [ana/*cljs-ns* ana/*cljs-ns*
+            ;; what cljs.compiler/compile-file binds for each file
+            ana/*unchecked-if* false
+            ana/*unchecked-arrays* false
+            ana/*cljs-warnings* ana/*cljs-warnings*]
     (cljs.repl/load-stream repl-env filename (StringReader. source))))
 
 ;; ---------------------------------------------------------------------------
@@ -528,58 +533,85 @@
 (defn eval-cljs [repl-env env form file opts]
   (eval-form repl-env env form file opts (::print opts)))
 
-(defn do-eval [{:keys [session transport ^String code file ns] :as msg}]
-  (with-bindings (merge (@session #'pb/*cljs-repl-bindings*)
-                        ;; On nREPL 1.3+ the session middleware already binds the
-                        ;; session contents, so we must not rebind them here.
-                        (when-not compat/nrepl-1-3+?
-                          @session)
-                        (when ns
-                          {ns-var (symbol ns)})
-                        (compat/output-bindings msg))
-    ;; Repoint the repl env's output-pump thread at this message's output (#111).
-    (when pb/*cljs-out-target* (reset! pb/*cljs-out-target* *out*))
-    (when pb/*cljs-err-target* (reset! pb/*cljs-err-target* *err*))
-    (let [repl-env pb/*cljs-repl-env*
-          repl-options pb/*cljs-repl-options*
-          init-ns (current-ns)
-          specials (special-fns repl-options)
-          is-special-fn? (set (keys specials))]
+(defn- set-session-vars!
+  "Set `bindings`, a var -> value map, in `session`. On nREPL 1.3+ the session's
+  vars are bound for the duration of the message and copied back into the
+  session afterwards, which would undo a plain `swap!`, so set the bindings too
+  (nrepl/nrepl#497)."
+  [session bindings]
+  (swap! session merge bindings)
+  (doseq [[v value] bindings
+          :when (thread-bound? v)]
+    (var-set v value)))
+
+(defn- call-with-repl-bindings
+  "Call `f` to handle `msg` within the ClojureScript REPL's bindings plus
+  `extra-bindings`, reporting what it throws. The bindings' values are stored
+  back afterwards, so that a `set!` of one, e.g. `(set! *warn-on-infer* true)`,
+  lasts for the rest of the REPL session, as it does in `repl*`."
+  [{:keys [session transport] :as msg} extra-bindings f]
+  (let [repl-bindings (@session #'pb/*cljs-repl-bindings*)]
+    (with-bindings (merge repl-bindings
+                          ;; On nREPL 1.3+ the session middleware already binds the
+                          ;; session contents, so we must not rebind them here.
+                          (when-not compat/nrepl-1-3+?
+                            @session)
+                          extra-bindings
+                          (compat/output-bindings msg))
+      ;; Repoint the repl env's output-pump thread at this message's output (#111).
+      (when pb/*cljs-out-target* (reset! pb/*cljs-out-target* *out*))
+      (when pb/*cljs-err-target* (reset! pb/*cljs-err-target* *err*))
       (try
-        (let [form (read-form code)
-              env  (analyzer-env init-ns)
-              result (when form
-                       (if (and (seq? form) (is-special-fn? (first form)))
-                         (do ((get specials (first form)) repl-env env form repl-options)
-                             nil)
-                         (eval-cljs repl-env
-                                    env
-                                    form
-                                    file
-                                    (assoc repl-options
-                                           ::print
-                                           (:nrepl.middleware.print/print msg)))))]
-          (.flush ^Writer *out*)
-          (.flush ^Writer *err*)
-          (when (and (or (not ns)
-                         (not= init-ns (current-ns)))
-                     (current-ns))
-            (swap! session assoc ns-var (current-ns)))
-          (transport/send
-           transport
-           (response-for msg
-                         (try
-                           {:value (when (some? result)
-                                     (edn-reader/read-string
-                                      {:default pb/->UnknownTaggedLiteral}
-                                      result))
-                            :nrepl.middleware.print/keys #{:value}
-                            :ns (current-ns)}
-                           (catch Exception _
-                             {:value (or result "nil")
-                              :ns (current-ns)})))))
+        (f)
         (catch Throwable t
-          (repl-caught session transport msg t repl-env repl-options))))))
+          (repl-caught session transport msg t pb/*cljs-repl-env* pb/*cljs-repl-options*))
+        (finally
+          (set-session-vars! session {#'pb/*cljs-repl-bindings*
+                                      (select-keys (get-thread-bindings) (keys repl-bindings))}))))))
+
+(defn do-eval [{:keys [session transport ^String code file ns] :as msg}]
+  (call-with-repl-bindings
+   msg
+   (when ns
+     {ns-var (symbol ns)})
+   (fn []
+     (let [repl-env pb/*cljs-repl-env*
+           repl-options pb/*cljs-repl-options*
+           init-ns (current-ns)
+           specials (special-fns repl-options)
+           is-special-fn? (set (keys specials))
+           form (read-form code)
+           env  (analyzer-env init-ns)
+           result (when form
+                    (if (and (seq? form) (is-special-fn? (first form)))
+                      (do ((get specials (first form)) repl-env env form repl-options)
+                          nil)
+                      (eval-cljs repl-env
+                                 env
+                                 form
+                                 file
+                                 (assoc repl-options
+                                        ::print
+                                        (:nrepl.middleware.print/print msg)))))]
+       (.flush ^Writer *out*)
+       (.flush ^Writer *err*)
+       (when (and (or (not ns)
+                      (not= init-ns (current-ns)))
+                  (current-ns))
+         (swap! session assoc ns-var (current-ns)))
+       (transport/send
+        transport
+        (response-for msg
+                      (try
+                        {:value (when (some? result)
+                                  (edn-reader/read-string
+                                   {:default pb/->UnknownTaggedLiteral}
+                                   result))
+                         :nrepl.middleware.print/keys #{:value}
+                         :ns (current-ns)}
+                        (catch Exception _
+                          {:value (or result "nil")
+                           :ns (current-ns)}))))))))
 
 ;; only executed within the context of an nREPL session having *cljs-repl-env*
 ;; bound. Thus, we're not going through interruptible-eval, and the user's
@@ -598,39 +630,25 @@
                  #'pb/*cljs-repl-bindings* nil
                  ns-var 'cljs.user}]
       (tear-down! actual-repl-env)
-      (swap! session merge reset)
-      ;; On nREPL 1.3+ the session's vars are bound for the duration of the
-      ;; message and copied back into the session afterwards, which would undo
-      ;; the swap! above and leave the session in ClojureScript mode. So set
-      ;; the bindings too.
-      (doseq [[^clojure.lang.Var v value] reset
-              :when (thread-bound? v)]
-        (.set v value))
+      (set-session-vars! session reset)
       (transport/send transport (response-for msg
                                               :value "nil"
                                               :ns (str orig-ns))))))
 
 (defn- do-load-file
   "Evaluate the ClojureScript source sent in the `load-file` message (its
-  `:file`), against the active repl-env. Mirrors the binding setup of `do-eval`."
-  [{:keys [session transport file file-path file-name] :as msg}]
-  (with-bindings (merge (@session #'pb/*cljs-repl-bindings*)
-                        (when-not compat/nrepl-1-3+?
-                          @session)
-                        (compat/output-bindings msg))
-    (when pb/*cljs-out-target* (reset! pb/*cljs-out-target* *out*))
-    (when pb/*cljs-err-target* (reset! pb/*cljs-err-target* *err*))
-    (let [repl-env pb/*cljs-repl-env*
-          repl-options pb/*cljs-repl-options*]
-      (try
-        (load-source repl-env file (or file-path file-name "<cljs file>"))
-        (.flush ^Writer *out*)
-        (.flush ^Writer *err*)
-        (transport/send transport (response-for msg
-                                                :value "nil"
-                                                :ns (str (current-ns))))
-        (catch Throwable t
-          (repl-caught session transport msg t repl-env repl-options))))))
+  `:file`), against the active repl-env."
+  [{:keys [transport file file-path file-name] :as msg}]
+  (call-with-repl-bindings
+   msg
+   nil
+   (fn []
+     (load-source pb/*cljs-repl-env* file (or file-path file-name "<cljs file>"))
+     (.flush ^Writer *out*)
+     (.flush ^Writer *err*)
+     (transport/send transport (response-for msg
+                                             :value "nil"
+                                             :ns (str (current-ns)))))))
 
 (defn- load-file [{:keys [file file-path] :as msg}]
   (if (string? file)
