@@ -2,6 +2,7 @@
 
 ## unreleased
 
+* [#93](https://github.com/nrepl/piggieback/issues/93): Keep the dynamic bindings established around `cljs-repl` (e.g. figwheel-main's `*config*`, or `cljs.env/*compiler*`) in effect for later evaluations like `cljs.repl` does, replacing the `*cljs-warnings*` and `*cljs-warning-handlers*` session vars with `*cljs-repl-bindings*`.
 * [#159](https://github.com/nrepl/piggieback/pull/159): Fix `:cljs/quit` on nREPL 1.3+, where the session stayed in ClojureScript mode and the next evaluation failed against the torn-down runtime.
 * [#158](https://github.com/nrepl/piggieback/pull/158): Evaluate with the same dynamic bindings as `cljs.repl`, so the `:warnings`, `:warn-on-undeclared`, `:repl-verbose`, `:static-fns`, `:fn-invoke-direct` and `:checked-arrays` options of `cljs-repl` take effect, warning handlers installed around `cljs-repl` (e.g. by figwheel-main) are used, and `(set! *unchecked-arrays* true)` no longer fails.
 * [#158](https://github.com/nrepl/piggieback/pull/158): Read keywords qualified with an `:as-alias` alias (e.g. `::foo/bar`) at the REPL (ClojureScript 1.11+).

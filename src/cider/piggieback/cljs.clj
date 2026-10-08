@@ -52,10 +52,6 @@
   [ns-sym]
   (set! ana/*cljs-ns* ns-sym))
 
-(defn warnings [] ana/*cljs-warnings*)
-
-(defn warning-handlers [] ana/*cljs-warning-handlers*)
-
 (defn eval-bindings
   "Binding map for evaluating in `repl-env`, with `opts` the repl options (see
   `build-opts`).
@@ -415,6 +411,23 @@
                            (catch Throwable _))
                          (when orig-close (orig-close)))))))))
 
+(defn- caller-bindings
+  "The thread bindings in place around `cljs-repl`, except for the session's own
+  and the ones nREPL and the Clojure compiler establish per message, which we
+  tell apart by namespace (`clojure.*` and `nrepl.*`). `repl*` evaluates within
+  whatever its caller bound for as long as it runs, and tools rely on that, e.g.
+  figwheel-main's REPL controls read its `*config*` (issue #93)."
+  [session]
+  (let [session-vars @session]
+    (into {}
+          (remove (fn [[^clojure.lang.Var v _]]
+                    (let [ns-name (some-> (.ns v) str)]
+                      (or (contains? session-vars v)
+                          ;; the compiler's own, e.g. Compiler/LOADER
+                          (nil? ns-name)
+                          (re-find #"^(clojure|nrepl)\." ns-name)))))
+          (get-thread-bindings))))
+
 ;; This function always executes when the nREPL session is evaluating Clojure,
 ;; via interruptible-eval, etc. This means our dynamic environment is in place,
 ;; so set! and simple dereferencing is available. Contrast w/ evaluate and
@@ -445,11 +458,13 @@
           ;; because we are calling evaluate outside of the repl
           ;; loop.
           opts (build-opts repl-opts options)
-          ;; Create the compiler env up front and hand it to the repl loop so we
-          ;; always hold a reference to it, even if the setup eval errors and the
-          ;; loop's :print callback (which would otherwise capture it) never runs
-          ;; (issue #62).
-          compiler-env (or (:compiler-env options) (default-compiler-env opts))
+          ;; Pick the compiler env up front, as repl* does, and hand it to the
+          ;; repl loop so we always hold a reference to it, even if the setup eval
+          ;; errors and the loop's :print callback (which would otherwise capture
+          ;; it) never runs (issue #62).
+          compiler-env (or (:compiler-env options)
+                           env/*compiler*
+                           (default-compiler-env opts))
           {:keys [session ns]} ieval/*msg*
           init-ns (if ns (symbol ns) (get @session ns-var))]
       (set-current-ns! 'cljs.user)
@@ -487,8 +502,8 @@
       (set! pb/*cljs-repl-options* opts)
       ;; interruptible-eval is in charge of emitting the final :ns response in this context
       (set! pb/*original-clj-ns* *ns*)
-      (set! pb/*cljs-warnings* (warnings))
-      (set! pb/*cljs-warning-handlers* (warning-handlers))
+      (set! pb/*cljs-repl-bindings* (merge (caller-bindings session)
+                                           (eval-bindings compiler-env repl-env opts)))
       (set! *ns* (find-ns (current-ns)))
       ;; make sure a leaked JS runtime is torn down if the session is closed
       ;; without a :cljs/quit first
@@ -510,25 +525,11 @@
                (func))
             #(transport/send transport (response-for msg :status :done))))))
 
-(defn- session-eval-bindings
-  "`eval-bindings` for the ClojureScript REPL in `session`, computed against the
-  warnings and warning handlers that were in place when `cljs-repl` started,
-  like `repl*` computes its own. figwheel-main, for one, installs its warning
-  handlers around `cljs-repl`."
-  [session]
-  (let [s @session]
-    (binding [ana/*cljs-warnings* (or (s #'pb/*cljs-warnings*) ana/*cljs-warnings*)
-              ana/*cljs-warning-handlers* (or (s #'pb/*cljs-warning-handlers*)
-                                              ana/*cljs-warning-handlers*)]
-      (eval-bindings (s #'pb/*cljs-compiler-env*)
-                     (s #'pb/*cljs-repl-env*)
-                     (s #'pb/*cljs-repl-options*)))))
-
 (defn eval-cljs [repl-env env form file opts]
   (eval-form repl-env env form file opts (::print opts)))
 
 (defn do-eval [{:keys [session transport ^String code file ns] :as msg}]
-  (with-bindings (merge (session-eval-bindings session)
+  (with-bindings (merge (@session #'pb/*cljs-repl-bindings*)
                         ;; On nREPL 1.3+ the session middleware already binds the
                         ;; session contents, so we must not rebind them here.
                         (when-not compat/nrepl-1-3+?
@@ -594,6 +595,7 @@
                  #'pb/*cljs-repl-env* nil
                  #'pb/*cljs-compiler-env* nil
                  #'pb/*cljs-repl-options* nil
+                 #'pb/*cljs-repl-bindings* nil
                  ns-var 'cljs.user}]
       (tear-down! actual-repl-env)
       (swap! session merge reset)
@@ -612,7 +614,7 @@
   "Evaluate the ClojureScript source sent in the `load-file` message (its
   `:file`), against the active repl-env. Mirrors the binding setup of `do-eval`."
   [{:keys [session transport file file-path file-name] :as msg}]
-  (with-bindings (merge (session-eval-bindings session)
+  (with-bindings (merge (@session #'pb/*cljs-repl-bindings*)
                         (when-not compat/nrepl-1-3+?
                           @session)
                         (compat/output-bindings msg))
@@ -663,8 +665,7 @@
         (swap! session (partial merge {#'pb/*cljs-repl-env* pb/*cljs-repl-env*
                                        #'pb/*cljs-compiler-env* pb/*cljs-compiler-env*
                                        #'pb/*cljs-repl-options* pb/*cljs-repl-options*
-                                       #'pb/*cljs-warnings* pb/*cljs-warnings*
-                                       #'pb/*cljs-warning-handlers* pb/*cljs-warning-handlers*
+                                       #'pb/*cljs-repl-bindings* pb/*cljs-repl-bindings*
                                        #'pb/*cljs-out-target* pb/*cljs-out-target*
                                        #'pb/*cljs-err-target* pb/*cljs-err-target*
                                        #'pb/*original-clj-ns* *ns*
