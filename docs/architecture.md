@@ -193,7 +193,7 @@ sequenceDiagram
     C->>W: eval "(+ 1 1)" (Piggieback session)
     Note over W: session has *cljs-repl-env*
     W->>EV: route to evaluate, enqueue on the session executor
-    EV->>EV: with-bindings (compiler-env, repl-env, warnings),<br/>repoint forwarding writers at this msg's *out*/*err*
+    EV->>EV: with-bindings (repl*'s bindings for the session's options),<br/>repoint forwarding writers at this msg's *out*/*err*
     EV->>RD: read form (cljs data readers + ns alias map)
     RD-->>EV: form
     EV->>EF: eval-cljs (wrapped for *1/*2/*3 and pretty-printing)
@@ -212,6 +212,18 @@ Ongoing evaluation does *not* go through `repl*`. It calls
 in the session. The result comes back as a printed string, which Piggieback
 re-reads with an EDN reader (using `UnknownTaggedLiteral` as the default tag
 handler so unknown tagged literals round-trip) before sending it as `:value`.
+
+Skipping `repl*`'s loop means skipping the dynamic environment it sets up around
+reading and evaluating, so Piggieback recreates it: `read-bindings` and
+`eval-bindings` in `cider.piggieback.cljs` bind the same vars `repl*` does, with
+values derived from the session's repl options and from the warnings and warning
+handlers in place when `cljs-repl` started (figwheel-main installs its own
+handlers around it). A var missing there turns into a
+silently ignored repl option (`:warnings`, or `*repl-opts*` in issue #154) or a
+root-binding error when code `set!`s it (issue #95). The
+`cider.piggieback-repl-parity-test` runs the real `repl*` against a stub env and
+fails if the two ever bind different vars or values, so a ClojureScript release
+that changes `repl*` shows up in the test matrix.
 
 Note the two distinct evaluation paths (setup via `repl*`, steady-state via
 `evaluate-form`). Fully unifying them onto one path was considered (roadmap item
@@ -317,11 +329,11 @@ things like `load-file`, `in-ns`, and `require` behave like REPL specials.
 
 The `load-file` op evaluates the source sent in the message (its `:file`), using
 `cljs.repl/load-stream` to read and evaluate every top-level form against the
-active repl-env, with the analyzer namespace restored afterwards. `load-stream`
-reads the repl options from `cljs.repl/*repl-opts*`, which only `cljs.repl/repl*`
-binds, so Piggieback binds it to the session's repl options for the duration;
-without them an `ns` form can't resolve foreign libs such as cljsjs packages
-(issue #154). This loads the client's buffer content, including unsaved changes, matching Clojure nREPL
+active repl-env, with the analyzer namespace restored afterwards. It runs under
+the same bindings as evaluation, which matters here because `load-stream` reads
+the repl options from `cljs.repl/*repl-opts*`; without them an `ns` form can't
+resolve foreign libs such as cljsjs packages (issue #154). This loads the
+client's buffer content, including unsaved changes, matching Clojure nREPL
 semantics. If a message arrives without `:file` content, Piggieback falls back to
 the cljs `load-file` special function, which reads from disk (roadmap item C2).
 
