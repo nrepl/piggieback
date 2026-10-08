@@ -216,6 +216,20 @@
   (merge tags/*cljs-data-readers*
          (when load-data-readers (load-data-readers))))
 
+(def ^:private get-aliases
+  "`cljs.analyzer/get-aliases` (ClojureScript 1.11+), or nil."
+  (resolve 'cljs.analyzer/get-aliases))
+
+(defn- alias-map
+  "The reader alias map for namespace `ns-sym`, mirroring `cljs.repl`. On
+  ClojureScript 1.11+ it includes `:as-alias` requires."
+  [ns-sym]
+  (if get-aliases
+    (get-aliases ns-sym)
+    (apply merge
+           ((juxt :requires :require-macros)
+            (ana/get-namespace ns-sym)))))
+
 (defn read-form
   "Read a single ClojureScript form from `form-str`, with the cljs data readers
   and the current namespace's alias map in place. Returns nil for blank input."
@@ -224,10 +238,7 @@
     (binding [*ns* (create-ns ana/*cljs-ns*)
               reader/resolve-symbol ana/resolve-symbol
               reader/*data-readers* (data-readers)
-              reader/*alias-map*
-              (apply merge
-                     ((juxt :requires :require-macros)
-                      (ana/get-namespace ana/*cljs-ns*)))]
+              reader/*alias-map* (alias-map ana/*cljs-ns*)]
       (reader/read {:read-cond :allow :features #{:cljs}}
                    (readers/source-logging-push-back-reader
                     (StringReader. form-str))))))
