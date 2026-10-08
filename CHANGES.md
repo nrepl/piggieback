@@ -2,6 +2,8 @@
 
 ## unreleased
 
+## 0.8.0 (2026-10-08)
+
 * [#160](https://github.com/nrepl/piggieback/pull/160): Keep a `set!` of `*warn-on-infer*`, `*unchecked-if*` or `*unchecked-arrays*` in effect for the rest of the REPL session like `cljs.repl` does, while a loaded file's `set!`s stay within the file.
 * [#93](https://github.com/nrepl/piggieback/issues/93): Keep the dynamic bindings established around `cljs-repl` (e.g. figwheel-main's `*config*`, or `cljs.env/*compiler*`) in effect for later evaluations like `cljs.repl` does, replacing the `*cljs-warnings*` and `*cljs-warning-handlers*` session vars with `*cljs-repl-bindings*`.
 * [#159](https://github.com/nrepl/piggieback/pull/159): Fix `:cljs/quit` on nREPL 1.3+, where the session stayed in ClojureScript mode and the next evaluation failed against the torn-down runtime.
