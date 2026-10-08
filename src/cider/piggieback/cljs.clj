@@ -589,16 +589,21 @@
     (do-eval msg)
 
     (let [actual-repl-env (get-repl-env (@session #'pb/*cljs-repl-env*))
-          orig-ns (@session #'pb/*original-clj-ns*)]
+          orig-ns (@session #'pb/*original-clj-ns*)
+          reset {#'*ns* orig-ns
+                 #'pb/*cljs-repl-env* nil
+                 #'pb/*cljs-compiler-env* nil
+                 #'pb/*cljs-repl-options* nil
+                 ns-var 'cljs.user}]
       (tear-down! actual-repl-env)
-      (swap! session assoc
-             #'*ns* orig-ns
-             #'pb/*cljs-repl-env* nil
-             #'pb/*cljs-compiler-env* nil
-             #'pb/*cljs-repl-options* nil
-             ns-var 'cljs.user)
-      (when (thread-bound? #'*ns*)
-        (set! *ns* orig-ns))
+      (swap! session merge reset)
+      ;; On nREPL 1.3+ the session's vars are bound for the duration of the
+      ;; message and copied back into the session afterwards, which would undo
+      ;; the swap! above and leave the session in ClojureScript mode. So set
+      ;; the bindings too.
+      (doseq [[^clojure.lang.Var v value] reset
+              :when (thread-bound? v)]
+        (.set v value))
       (transport/send transport (response-for msg
                                               :value "nil"
                                               :ns (str orig-ns))))))

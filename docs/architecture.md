@@ -260,6 +260,11 @@ a teardown into the session's `:close` metadata fn (the one
 keeps a client that closes its session (or exits) without `:cljs/quit` from
 leaking the JavaScript runtime (roadmap item C1).
 
+`:cljs/quit` resets the session's ClojureScript vars both in the session atom
+and, where they're thread-bound, in the bindings themselves. nREPL 1.3+ copies a
+message's bindings back into the session once it completes, which would
+otherwise restore the old values and leave the session in ClojureScript mode.
+
 Note this covers session *close*, not a silently dropped TCP connection: nREPL
 sessions deliberately outlive their connection (so you can reconnect, as the
 output-routing test exercises), so a dropped connection alone does not close the
