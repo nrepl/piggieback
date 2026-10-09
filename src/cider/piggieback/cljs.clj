@@ -455,68 +455,71 @@
                  "started from a plain Clojure REPL or from Leiningen's "
                  ":repl-options :init, both of which run outside of any session.")
             {:repl-env repl-env})))
-  (try
-    (let [repl-opts (repl-options repl-env)
-          repl-env (delegating-repl-env repl-env)
-          ;; have to initialise repl-options the same way they
-          ;; are initilized inside of the cljs.repl/repl loop
-          ;; because we are calling evaluate outside of the repl
-          ;; loop.
-          opts (build-opts repl-opts options)
-          ;; Pick the compiler env up front, as repl* does, and hand it to the
-          ;; repl loop so we always hold a reference to it, even if the setup eval
-          ;; errors and the loop's :print callback (which would otherwise capture
-          ;; it) never runs (issue #62).
-          compiler-env (or (:compiler-env options)
-                           env/*compiler*
-                           (default-compiler-env opts))
-          {:keys [session ns]} ieval/*msg*
-          init-ns (if ns (symbol ns) (get @session ns-var))]
-      (set-current-ns! 'cljs.user)
-      (let [out-target (atom *out*)
-            err-target (atom *err*)]
-        ;; Set up the repl env with forwarding writers in place so its
-        ;; output-pump thread forwards to the current message's output rather
-        ;; than to the one that started the REPL (issue #111).
-        (binding [*out* (pb/forwarding-writer out-target)
-                  *err* (pb/forwarding-writer err-target)]
-          (setup-repl
-           repl-env compiler-env options init-ns
-           ;; this is needed to respect :repl-requires
-           (if-let [requires (not-empty (:repl-requires opts))]
-             (pr-str (cons 'ns `(cljs.user (:require ~@requires
-                                                     [~'cljs.repl :refer-macros [~'source ~'doc ~'find-doc
-                                                                                 ~'apropos ~'dir ~'pst]]
-                                                     [~'cljs.pprint]))))
-             (nrepl/code (ns cljs.user
-                           (:require [cljs.repl :refer-macros [source doc find-doc
-                                                               apropos dir pst]]
-                                     [cljs.pprint]))))))
-        (set! pb/*cljs-out-target* out-target)
-        (set! pb/*cljs-err-target* err-target))
-      ;; The setup form above switched us into cljs.user; persist that in the
-      ;; session so subsequent evaluations start there. (Setting `ns-var` outside
-      ;; of `setup-repl`'s binding works because we `set-current-ns!`'d to
-      ;; cljs.user before it, so the analyzer ns reverts to cljs.user when
-      ;; `repl*`'s own binding unwinds.)
-      (swap! session assoc ns-var (current-ns))
-      ;; Record the compiler env (the one we created and handed to repl*), even
-      ;; if the setup eval errored (issue #62).
-      (set! pb/*cljs-compiler-env* compiler-env)
-      (set! pb/*cljs-repl-env* repl-env)
-      (set! pb/*cljs-repl-options* opts)
-      ;; interruptible-eval is in charge of emitting the final :ns response in this context
-      (set! pb/*original-clj-ns* *ns*)
-      (set! pb/*cljs-repl-bindings* (merge (caller-bindings session)
-                                           (eval-bindings compiler-env repl-env opts)))
-      (set! *ns* (find-ns (current-ns)))
-      ;; make sure a leaked JS runtime is torn down if the session is closed
-      ;; without a :cljs/quit first
-      (ensure-close-teardown! session)
-      (println "To quit, type:" :cljs/quit))
-    (catch Exception e
-      (set! pb/*cljs-repl-env* nil)
-      (throw e))))
+  ;; Sessions only get the analyzer's namespace var once they start a REPL,
+  ;; so that loading the ClojureScript compiler waits until then.
+  (with-bindings (if (thread-bound? ns-var) {} {ns-var 'cljs.user})
+    (try
+      (let [repl-opts (repl-options repl-env)
+            repl-env (delegating-repl-env repl-env)
+            ;; have to initialise repl-options the same way they
+            ;; are initilized inside of the cljs.repl/repl loop
+            ;; because we are calling evaluate outside of the repl
+            ;; loop.
+            opts (build-opts repl-opts options)
+            ;; Pick the compiler env up front, as repl* does, and hand it to the
+            ;; repl loop so we always hold a reference to it, even if the setup eval
+            ;; errors and the loop's :print callback (which would otherwise capture
+            ;; it) never runs (issue #62).
+            compiler-env (or (:compiler-env options)
+                             env/*compiler*
+                             (default-compiler-env opts))
+            {:keys [session ns]} ieval/*msg*
+            init-ns (if ns (symbol ns) (get @session ns-var 'cljs.user))]
+        (set-current-ns! 'cljs.user)
+        (let [out-target (atom *out*)
+              err-target (atom *err*)]
+          ;; Set up the repl env with forwarding writers in place so its
+          ;; output-pump thread forwards to the current message's output rather
+          ;; than to the one that started the REPL (issue #111).
+          (binding [*out* (pb/forwarding-writer out-target)
+                    *err* (pb/forwarding-writer err-target)]
+            (setup-repl
+             repl-env compiler-env options init-ns
+             ;; this is needed to respect :repl-requires
+             (if-let [requires (not-empty (:repl-requires opts))]
+               (pr-str (cons 'ns `(cljs.user (:require ~@requires
+                                                       [~'cljs.repl :refer-macros [~'source ~'doc ~'find-doc
+                                                                                   ~'apropos ~'dir ~'pst]]
+                                                       [~'cljs.pprint]))))
+               (nrepl/code (ns cljs.user
+                             (:require [cljs.repl :refer-macros [source doc find-doc
+                                                                 apropos dir pst]]
+                                       [cljs.pprint]))))))
+          (set! pb/*cljs-out-target* out-target)
+          (set! pb/*cljs-err-target* err-target))
+        ;; The setup form above switched us into cljs.user; persist that in the
+        ;; session so subsequent evaluations start there. (Setting `ns-var` outside
+        ;; of `setup-repl`'s binding works because we `set-current-ns!`'d to
+        ;; cljs.user before it, so the analyzer ns reverts to cljs.user when
+        ;; `repl*`'s own binding unwinds.)
+        (swap! session assoc ns-var (current-ns))
+        ;; Record the compiler env (the one we created and handed to repl*), even
+        ;; if the setup eval errored (issue #62).
+        (set! pb/*cljs-compiler-env* compiler-env)
+        (set! pb/*cljs-repl-env* repl-env)
+        (set! pb/*cljs-repl-options* opts)
+        ;; interruptible-eval is in charge of emitting the final :ns response in this context
+        (set! pb/*original-clj-ns* *ns*)
+        (set! pb/*cljs-repl-bindings* (merge (caller-bindings session)
+                                             (eval-bindings compiler-env repl-env opts)))
+        (set! *ns* (find-ns (current-ns)))
+        ;; make sure a leaked JS runtime is torn down if the session is closed
+        ;; without a :cljs/quit first
+        (ensure-close-teardown! session)
+        (println "To quit, type:" :cljs/quit))
+      (catch Exception e
+        (set! pb/*cljs-repl-env* nil)
+        (throw e)))))
 
 (defn- enqueue [{:keys [id session transport] :as msg} func]
   (let [{:keys [exec]} (meta session)]
@@ -552,6 +555,11 @@
   [{:keys [session transport] :as msg} extra-bindings f]
   (let [repl-bindings (@session #'pb/*cljs-repl-bindings*)]
     (with-bindings (merge repl-bindings
+                          ;; On nREPL before 1.3.1, a message still running when
+                          ;; `wrap-cljs-repl` added the namespace var to the
+                          ;; session can take it out again.
+                          (when-not (thread-bound? ns-var)
+                            {ns-var (get @session ns-var 'cljs.user)})
                           ;; On nREPL 1.3+ the session middleware already binds the
                           ;; session contents, so we must not rebind them here.
                           (when-not compat/nrepl-1-3+?
@@ -671,21 +679,16 @@
                    repl-env (assoc :repl-env-type
                                    (.getName (class (get-repl-env repl-env)))))}))
 
-(defn wrap-cljs-repl [handler]
+(defn wrap-cljs-repl
+  "The middleware for sessions with an active ClojureScript REPL, which
+  `cider.piggieback/wrap-cljs-repl` hands their messages to."
+  [handler]
   (fn [{:keys [session op] :as msg}]
-    (let [handler (or (when-let [f (and (@session #'pb/*cljs-repl-env*)
-                                        ({"eval" #'evaluate "load-file" #'load-file} op))]
-                        (fn [msg]
-                          (enqueue msg #(f msg))))
-                      handler)]
-      ;; ensure that bindings exist so cljs-repl can set!
-      (when-not (@session #'pb/*cljs-repl-env*)
-        (swap! session (partial merge {#'pb/*cljs-repl-env* pb/*cljs-repl-env*
-                                       #'pb/*cljs-compiler-env* pb/*cljs-compiler-env*
-                                       #'pb/*cljs-repl-options* pb/*cljs-repl-options*
-                                       #'pb/*cljs-repl-bindings* pb/*cljs-repl-bindings*
-                                       #'pb/*cljs-out-target* pb/*cljs-out-target*
-                                       #'pb/*cljs-err-target* pb/*cljs-err-target*
-                                       #'pb/*original-clj-ns* *ns*
-                                       ns-var (current-ns)})))
+    ;; `cljs-repl` adds the namespace var to the session, but nREPL before
+    ;; 1.3.1 replaces the session with the vars bound during the message,
+    ;; which the namespace var isn't the first time.
+    (when-not (contains? @session ns-var)
+      (swap! session assoc ns-var 'cljs.user))
+    (if-let [f ({"eval" #'evaluate "load-file" #'load-file} op)]
+      (enqueue msg #(f msg))
       (handler msg))))

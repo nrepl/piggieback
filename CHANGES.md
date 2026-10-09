@@ -2,6 +2,8 @@
 
 ## unreleased
 
+* [#161](https://github.com/nrepl/piggieback/pull/161): Load ClojureScript when a session starts a ClojureScript REPL rather than when the server starts, taking about 0.4s off the startup of servers with ClojureScript on the classpath.
+
 ## 0.8.0 (2026-10-08)
 
 * [#160](https://github.com/nrepl/piggieback/pull/160): Keep a `set!` of `*warn-on-infer*`, `*unchecked-if*` or `*unchecked-arrays*` in effect for the rest of the REPL session like `cljs.repl` does, while a loaded file's `set!`s stay within the file.

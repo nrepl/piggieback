@@ -128,14 +128,18 @@ unconditionally. There are two namespaces:
   holds the session-state dynamic vars (the part other middleware read by name),
   and exposes the public API as thin delegators.
 - `cider.piggieback.cljs` - the implementation, which requires the ClojureScript
-  compiler and holds the handlers. It is loaded lazily, on first use, and only
-  when ClojureScript is on the classpath.
+  compiler and holds the handlers. It is loaded lazily, when a session starts a
+  ClojureScript REPL, and only when ClojureScript is on the classpath.
 
-`cider.piggieback` checks for ClojureScript by trying to `require` `cljs.repl`
-directly (not the implementation namespace, which would trigger a load cycle
-since the implementation requires `cider.piggieback` back). When ClojureScript is
-present, the public functions resolve their counterparts in
-`cider.piggieback.cljs` via `requiring-resolve` on first call; when it is absent,
+Loading the compiler takes a while (around 0.4s of a server's startup), so
+`cider.piggieback` checks for ClojureScript by looking for `cljs.repl` on the
+classpath without loading it. When ClojureScript is present, `wrap-cljs-repl`
+seeds sessions with the vars above and passes their messages on until one
+starts a ClojureScript REPL: `cljs-repl` resolves its counterpart in
+`cider.piggieback.cljs` via `requiring-resolve`, as the other public functions
+do on first call, and from then on that session's messages go to the
+implementation's handler. `describe` reports a session without a REPL as
+inactive without loading anything. When ClojureScript is absent,
 `wrap-cljs-repl` is a no-op and `cljs-repl` throws a clear "did you forget a
 dependency?" error (roadmap item S1).
 
@@ -315,8 +319,9 @@ writers are owned by nREPL.
 ### Namespace tracking
 
 The current ClojureScript namespace (`cljs.analyzer/*cljs-ns*`) is stored in the
-session atom and updated after each eval, so that `in-ns` and namespace switches
-persist across messages and are reported back as `:ns`. The reader is configured
+session atom once the session starts a ClojureScript REPL, and updated after
+each eval, so that `in-ns` and namespace switches persist across messages and
+are reported back as `:ns`. The reader is configured
 with the analyzer's `resolve-symbol`, the cljs data readers, and an alias map
 reconstructed from the current namespace's `:requires` / `:require-macros`, so
 that alias-qualified keywords and reader conditionals read correctly. Like

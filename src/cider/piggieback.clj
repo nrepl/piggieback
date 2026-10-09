@@ -13,6 +13,7 @@
   one without a load cycle."
   {:author "Chas Emerick"}
   (:require
+   [clojure.java.io :as io]
    [nrepl.middleware :refer [set-descriptor!]]
    [nrepl.middleware.print :as print]))
 
@@ -78,13 +79,9 @@
   (print-method (.data this) w))
 
 (def ^:private cljs-available?
-  "True when ClojureScript is on the classpath. Checked against `cljs.repl`
-  directly (not the implementation namespace) so that resolving availability
-  doesn't trigger a load cycle."
-  (try
-    (require 'cljs.repl)
-    true
-    (catch Throwable _ false)))
+  "True when ClojureScript is on the classpath. Checked by looking for
+  `cljs.repl` rather than loading it, which takes a while."
+  (some? (io/resource "cljs/repl.cljc")))
 
 (defn- impl
   "Resolve `sym` in the ClojureScript implementation namespace, loading it on
@@ -119,15 +116,32 @@
   ((impl 'repl-caught) session transport nrepl-msg err repl-env repl-options))
 
 (defn wrap-cljs-repl [handler]
-  (if-let [f (impl 'wrap-cljs-repl)]
-    (f handler)
+  (if cljs-available?
+    ;; Loading ClojureScript takes a while, so the implementation waits for a
+    ;; session to start a ClojureScript REPL, which loads it.
+    (let [cljs-handler (delay ((impl 'wrap-cljs-repl) handler))]
+      (fn [{:keys [session] :as msg}]
+        (if (@session #'*cljs-repl-env*)
+          (@cljs-handler msg)
+          (do
+            ;; ensure that bindings exist so cljs-repl can set!
+            (swap! session (partial merge {#'*cljs-repl-env* *cljs-repl-env*
+                                           #'*cljs-compiler-env* *cljs-compiler-env*
+                                           #'*cljs-repl-options* *cljs-repl-options*
+                                           #'*cljs-repl-bindings* *cljs-repl-bindings*
+                                           #'*cljs-out-target* *cljs-out-target*
+                                           #'*cljs-err-target* *cljs-err-target*
+                                           #'*original-clj-ns* *ns*}))
+            (handler msg)))))
     ;; ClojureScript isn't available, so do nothing.
     handler))
 
-(defn- describe-cljs [msg]
-  (if-let [f (impl 'describe-cljs)]
-    (f msg)
-    {:piggieback {:cljs-repl "unavailable"}}))
+(defn- describe-cljs [{:keys [session] :as msg}]
+  (cond
+    (not cljs-available?) {:piggieback {:cljs-repl "unavailable"}}
+    (some-> session deref (get #'*cljs-repl-env*)) ((impl 'describe-cljs) msg)
+    ;; Without loading ClojureScript just to say so.
+    :else {:piggieback {:cljs-repl "inactive"}}))
 
 (set-descriptor! #'wrap-cljs-repl
                  {:requires #{"clone" #'print/wrap-print}
