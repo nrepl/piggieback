@@ -185,7 +185,7 @@ sequenceDiagram
     participant C as nREPL client
     participant W as wrap-cljs-repl
     participant EV as evaluate / do-eval
-    participant RD as read-cljs-string
+    participant RD as read-cljs
     participant EF as cljs.repl/evaluate-form
     participant E as repl-env
     participant JS as JS runtime
@@ -194,17 +194,19 @@ sequenceDiagram
     Note over W: session has *cljs-repl-env*
     W->>EV: route to evaluate, enqueue on the session executor
     EV->>EV: with-bindings (repl*'s bindings for the session's options),<br/>repoint forwarding writers at this msg's *out*/*err*
-    EV->>RD: read form (cljs data readers + ns alias map)
-    RD-->>EV: form
-    EV->>EF: eval-cljs (wrapped for *1/*2/*3 and pretty-printing)
-    EF->>E: -evaluate
-    E->>JS: run compiled JS
-    JS-->>E: result (printed string)
-    Note over E,JS: a separate output-pump thread writes<br/>stdout/stderr asynchronously, via the<br/>forwarding writer, to this message's *out*
-    E-->>EF: result
-    EF-->>EV: result
+    loop each form in the code
+        EV->>RD: read the next form (cljs data readers + ns alias map)
+        RD-->>EV: form
+        EV->>EF: eval-cljs (wrapped for *1/*2/*3 and pretty-printing)
+        EF->>E: -evaluate
+        E->>JS: run compiled JS
+        JS-->>E: result (printed string)
+        Note over E,JS: a separate output-pump thread writes<br/>stdout/stderr asynchronously, via the<br/>forwarding writer, to this message's *out*
+        E-->>EF: result
+        EF-->>EV: result
+        EV-->>C: :value, :ns
+    end
     EV->>EV: track current cljs ns back into the session
-    EV-->>C: :value, :ns
 ```
 
 Ongoing evaluation does *not* go through `repl*`. It calls
@@ -212,6 +214,14 @@ Ongoing evaluation does *not* go through `repl*`. It calls
 in the session. The result comes back as a printed string, which Piggieback
 re-reads with an EDN reader (using `UnknownTaggedLiteral` as the default tag
 handler so unknown tagged literals round-trip) before sending it as `:value`.
+
+Like nREPL's Clojure eval, `do-eval` evaluates every form in the code and
+answers each with its own `:value`. It reads a form only after evaluating the
+one before it, in the namespace that one left and with its aliases, so
+`(require '[clojure.string :as s]) ::s/kw` reads correctly (reading them all up
+front, as an earlier attempt in PR #98 did, would not). An error is reported
+and evaluation moves on to the next form, while a read error or an interrupt
+stops the rest.
 
 Skipping `repl*`'s loop means skipping the dynamic environment it sets up around
 reading and evaluating, so Piggieback recreates it: `read-bindings` and
@@ -368,9 +378,6 @@ roadmap item.
   C1), but a silently dropped TCP connection does not close the session, so it
   cannot trigger teardown; such a session lingers until an explicit close or
   server shutdown.
-- **Multi-form evaluation.** Only the first form of a multi-form string is
-  evaluated, because steady-state eval does not spin a fresh `cljs.repl` per
-  message (see the README Design section).
 - **Interrupt.** A long-running JS eval cannot be cancelled cleanly. This is
   largely inherent to single-threaded JS runtimes; it is documented in the
   README ("Interrupting evaluation").

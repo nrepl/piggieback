@@ -2,6 +2,8 @@
 
 ## unreleased
 
+* [#162](https://github.com/nrepl/piggieback/pull/162): Evaluate every form of an `eval` message and answer each, like nREPL's own `eval`, instead of silently dropping all but the first.
+
 ## 0.8.0 (2026-10-08)
 
 * [#160](https://github.com/nrepl/piggieback/pull/160): Keep a `set!` of `*warn-on-infer*`, `*unchecked-if*` or `*unchecked-arrays*` in effect for the rest of the REPL session like `cljs.repl` does, while a loaded file's `set!`s stay within the file.

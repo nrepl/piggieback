@@ -210,15 +210,11 @@ to ops like `eval` and that would trigger the Piggieback version of those ops.
 ### Evaluation
 
 As noted above Piggieback provides alternative versions of the standard nREPL
-ops `eval` and `load-file` for ClojureScript evaluation. Due to some differences
-between Clojure and ClojureScript they don't behave exactly the same.
-
-Most notably - for performance reasons we don't spin separate instances of `cljs.repl`
-for each evaluation, as nREPL does for Clojure. In practice this means that if you try
-to evaluate multiple forms together only the first of them would be evaluated:
+ops `eval` and `load-file` for ClojureScript evaluation. They behave like their
+Clojure counterparts: `eval` evaluates every form in its code in turn and sends
+back a value for each, and `load-file` evaluates the source sent in the message.
 
 ```clojure
-;; standard ClojureScript REPL behaviour
 cljs.user>
 (declare is-odd?)
 (defn is-even? [n] (if (= n 0) true (is-odd? (dec n))))
@@ -230,31 +226,15 @@ cljs.user> (is-even? 4)
 true
 ```
 
-Let's compare this to a REPL powered by Piggieback:
+Each form is read after the one before it has been evaluated, so a form can use
+an alias required by the form before it, e.g. `(require '[clojure.string :as s])
+::s/kw`. An error stops only the form it comes from, while a read error or an
+interrupt stops the rest.
 
-```clojure
-cljs.user>
-(declare is-odd?)
-(defn is-even? [n] (if (= n 0) true (is-odd? (dec n))))
-(defn is-odd? [n] (if (= n 0) false (is-even? (dec n))))
-#'cljs.user/is-odd?
-cljs.user> (is-even? 4)
-Compile Warning   <cljs repl>   line:1  column:2
-
-  Use of undeclared Var cljs.user/is-even?
-
-  1  (is-even? 4)
-      ^---
-
-#object[TypeError TypeError: Cannot read property 'call' of undefined]
-	 (<NO_SOURCE_FILE>)
-cljs.user>
-```
-
-Normally that's not a big deal in practice, as you'd rarely want to evaluate multiple expressions together, but it's
-something to be kept in mind.
-
-**Note:** Check out [this discussion](https://github.com/nrepl/piggieback/pull/98) for more details on the subject.
+Unlike nREPL on Clojure, which runs a fresh `clojure.main/repl` for each
+message, Piggieback doesn't start a `cljs.repl` for each evaluation, as that's
+much slower in ClojureScript. It evaluates forms against the REPL environment
+that `cljs-repl` set up instead.
 
 ### Pretty-printing
 
