@@ -126,6 +126,37 @@
       (some-> response :err println)
       (is (= ["2"] (:value response))))))
 
+;; Like nREPL's eval: each form of an eval gets evaluated and answered, read in
+;; the namespace the forms before it left, and an error only stops its own
+;; form, unless reading fails.
+(deftest every-form-is-evaluated
+  (try
+    (let [response (-> (nrepl/message *session* {:op "eval"
+                                                 :code "(+ 1 2) (ns piggieback.forms (:require [clojure.string :as s])) ::s/kw"})
+                       nrepl/combine-responses)]
+      (testing (pr-str response)
+        (some-> response :err println)
+        (is (= ["3" "nil" ":clojure.string/kw"] (:value response)))
+        (is (= "piggieback.forms" (:ns response)))))
+    (finally
+      (dorun (nrepl/message *session* {:op "eval" :code "(in-ns 'cljs.user)"}))))
+  (let [response (-> (nrepl/message *session* {:op "eval"
+                                               :code "(require '[clojure.string :as forms-str]) ::forms-str/kw"})
+                     nrepl/combine-responses)]
+    (testing (pr-str response)
+      (some-> response :err println)
+      (is (= ["nil" ":clojure.string/kw"] (:value response)))))
+  (let [response (-> (nrepl/message *session* {:op "eval" :code "(throw (js/Error. \"boom\")) (+ 3 4)"})
+                     nrepl/combine-responses)]
+    (testing (pr-str response)
+      (is (contains? (:status response) "eval-error"))
+      (is (= ["7"] (:value response)))))
+  (let [response (-> (nrepl/message *session* {:op "eval" :code "(+ 5 6) (+ 1"})
+                     nrepl/combine-responses)]
+    (testing (pr-str response)
+      (is (contains? (:status response) "eval-error"))
+      (is (= ["11"] (:value response))))))
+
 ;; Piggieback contributes its per-session ClojureScript status to nREPL's
 ;; `describe` response, so tooling can detect cljs mode from the protocol rather
 ;; than inferring it. The fixture has an active node REPL, so describe should

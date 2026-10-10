@@ -260,15 +260,20 @@
    #'reader/*data-readers* (data-readers)
    #'reader/*alias-map* (alias-map ana/*cljs-ns*)})
 
+(defn- read-cljs
+  "Read the next ClojureScript form from `reader`, with the cljs data readers
+  and the current namespace's alias map in place. `opts` go to tools.reader."
+  [reader opts]
+  (with-bindings (read-bindings)
+    (reader/read (merge {:read-cond :allow :features #{:cljs}} opts) reader)))
+
 (defn read-form
   "Read a single ClojureScript form from `form-str`, with the cljs data readers
   and the current namespace's alias map in place. Returns nil for blank input."
   [form-str]
   (when-not (string/blank? form-str)
-    (with-bindings (read-bindings)
-      (reader/read {:read-cond :allow :features #{:cljs}}
-                   (readers/source-logging-push-back-reader
-                    (StringReader. form-str))))))
+    (read-cljs (readers/source-logging-push-back-reader (StringReader. form-str))
+               nil)))
 
 ;; ---------------------------------------------------------------------------
 ;; Result wrapping and evaluation
@@ -569,7 +574,18 @@
           (set-session-vars! session {#'pb/*cljs-repl-bindings*
                                       (select-keys (get-thread-bindings) (keys repl-bindings))}))))))
 
-(defn do-eval [{:keys [session transport ^String code file ns] :as msg}]
+(defn- interrupted?
+  "Whether `e` comes from interrupting the evaluation."
+  [e]
+  (let [root-ex (#'clojure.main/root-cause e)]
+    (or (instance? InterruptedException root-ex)
+        (instance? ThreadDeath root-ex))))
+
+(defn do-eval
+  "Evaluate the forms in `msg`'s code one after another, as nREPL's eval does:
+  each gets a response with its value, an error stops only the form it comes
+  from, and a read error or an interrupt stops them all."
+  [{:keys [session transport ^String code file ns] :as msg}]
   (call-with-repl-bindings
    msg
    (when ns
@@ -580,38 +596,52 @@
            init-ns (current-ns)
            specials (special-fns repl-options)
            is-special-fn? (set (keys specials))
-           form (read-form code)
-           env  (analyzer-env init-ns)
-           result (when form
-                    (if (and (seq? form) (is-special-fn? (first form)))
-                      (do ((get specials (first form)) repl-env env form repl-options)
-                          nil)
-                      (eval-cljs repl-env
-                                 env
-                                 form
-                                 file
-                                 (assoc repl-options
-                                        ::print
-                                        (:nrepl.middleware.print/print msg)))))]
-       (.flush ^Writer *out*)
-       (.flush ^Writer *err*)
-       (when (and (or (not ns)
-                      (not= init-ns (current-ns)))
-                  (current-ns))
-         (swap! session assoc ns-var (current-ns)))
-       (transport/send
-        transport
-        (response-for msg
-                      (try
-                        {:value (when (some? result)
-                                  (edn-reader/read-string
-                                   {:default pb/->UnknownTaggedLiteral}
-                                   result))
-                         :nrepl.middleware.print/keys #{:value}
-                         :ns (current-ns)}
-                        (catch Exception _
-                          {:value (or result "nil")
-                           :ns (current-ns)}))))))))
+           reader (readers/source-logging-push-back-reader (StringReader. (or code "")))
+           eof (Object.)
+           eval-and-respond
+           (fn [form]
+             (let [env (analyzer-env (current-ns))
+                   result (if (and (seq? form) (is-special-fn? (first form)))
+                            (do ((get specials (first form)) repl-env env form repl-options)
+                                nil)
+                            (eval-cljs repl-env
+                                       env
+                                       form
+                                       file
+                                       (assoc repl-options
+                                              ::print
+                                              (:nrepl.middleware.print/print msg))))]
+               (.flush ^Writer *out*)
+               (.flush ^Writer *err*)
+               (transport/send
+                transport
+                (response-for msg
+                              (try
+                                {:value (when (some? result)
+                                          (edn-reader/read-string
+                                           {:default pb/->UnknownTaggedLiteral}
+                                           result))
+                                 :nrepl.middleware.print/keys #{:value}
+                                 :ns (current-ns)}
+                                (catch Exception _
+                                  {:value (or result "nil")
+                                   :ns (current-ns)}))))))]
+       (try
+         (loop []
+           (let [form (read-cljs reader {:eof eof})]
+             (when-not (identical? eof form)
+               (try
+                 (eval-and-respond form)
+                 (catch Throwable t
+                   (when (interrupted? t)
+                     (throw t))
+                   (repl-caught session transport msg t repl-env repl-options)))
+               (recur))))
+         (finally
+           (when (and (or (not ns)
+                          (not= init-ns (current-ns)))
+                      (current-ns))
+             (swap! session assoc ns-var (current-ns)))))))))
 
 ;; only executed within the context of an nREPL session having *cljs-repl-env*
 ;; bound. Thus, we're not going through interruptible-eval, and the user's
