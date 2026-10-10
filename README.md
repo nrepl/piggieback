@@ -200,6 +200,10 @@ dependency, rather than failing to load.
 This allows tools to safely load Piggieback without
 having to consider whether something would blow up.
 
+When ClojureScript is present, Piggieback still doesn't load it until a session
+starts a ClojureScript REPL, so a server that never starts one doesn't pay for
+loading the compiler.
+
 ### Session type based dispatch
 
 Clients don't have to specify explicitly whether they are doing a ClojureScript eval
